@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { encryptPayload, decryptPayload, CryptoError } from './crypto.js';
 
-const TEST_KEY = '12345678901234567890123456789012'; // 32 bytes
+const TEST_KEY = '3132333435363738393031323334353637383930313233343536373839303132'; // 32 bytes in hex
 
 describe('Contract 8: Crypto Layer Initialization', () => {
   describe('TC-8.1: Different IVs for identical plaintexts', () => {

@@ -60,6 +60,8 @@ async function handleGet(request: Request, env: Env): Promise<Response> {
     });
   }
 
+  await env.KV.delete(key);
+
   return new Response(value, {
     headers: { 'Content-Type': 'application/json' }
   });

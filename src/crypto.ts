@@ -19,11 +19,14 @@ const KEY_LENGTH = 32;
 const IV_LENGTH = 16;
 
 export function encryptPayload(plaintext: string, key: string): EncryptedPayload {
-  if (key.length !== KEY_LENGTH) {
-    throw new CryptoError(`Encryption key must be exactly ${KEY_LENGTH} bytes`);
+  const keyBuffer = key.length === KEY_LENGTH * 2 
+    ? Buffer.from(key, 'hex')
+    : Buffer.from(key, 'base64');
+  
+  if (keyBuffer.length !== KEY_LENGTH) {
+    throw new CryptoError(`Encryption key must be exactly ${KEY_LENGTH} bytes (64 hex chars or ~44 base64 chars)`);
   }
   
-  const keyBuffer = Buffer.from(key, 'utf-8');
   const iv = randomBytes(IV_LENGTH);
   const timestamp = new Date().toISOString();
   
@@ -50,11 +53,14 @@ export function encryptPayload(plaintext: string, key: string): EncryptedPayload
 }
 
 export function decryptPayload(payload: EncryptedPayload, key: string): string {
-  if (key.length !== KEY_LENGTH) {
-    throw new CryptoError(`Encryption key must be exactly ${KEY_LENGTH} bytes`);
+  const keyBuffer = key.length === KEY_LENGTH * 2 
+    ? Buffer.from(key, 'hex')
+    : Buffer.from(key, 'base64');
+  
+  if (keyBuffer.length !== KEY_LENGTH) {
+    throw new CryptoError(`Encryption key must be exactly ${KEY_LENGTH} bytes (64 hex chars or ~44 base64 chars)`);
   }
   
-  const keyBuffer = Buffer.from(key, 'utf-8');
   const iv = Buffer.from(payload.iv, 'base64');
   const authTag = Buffer.from(payload.authTag, 'base64');
   const ciphertext = Buffer.from(payload.ciphertext, 'base64');

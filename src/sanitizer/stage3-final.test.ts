@@ -13,9 +13,10 @@ describe('Contract 14: Stage 3 - Final Sweep', () => {
   });
 
   describe('TC-14.2: URL removal', () => {
-    it('should remove URLs even if redacted', () => {
-      const result = sanitizeStage3('Check [URL] for more info');
-      expect(result.sanitized).not.toContain('URL');
+    it('should remove URLs', () => {
+      const result = sanitizeStage3('Check https://example.com for more info');
+      expect(result.sanitized).not.toContain('https://example.com');
+      expect(result.sanitized).not.toContain('www.example.com');
     });
   });
 
@@ -36,6 +37,17 @@ describe('Contract 14: Stage 3 - Final Sweep', () => {
     it('should remove email patterns', () => {
       const result = sanitizeStage3('Email test@example.com please');
       expect(result.sanitized).not.toContain('@');
+    });
+  });
+
+  describe('Contract 17: Marker Preservation', () => {
+    it('should preserve [PROJECT], [FINANCIAL], and [CUSTOMER] tags', () => {
+      const content = 'The [PROJECT] budget was [FINANCIAL] for [CUSTOMER]';
+      const result = sanitizeStage3(content);
+      expect(result.sanitized).toContain('[PROJECT]');
+      expect(result.sanitized).toContain('[FINANCIAL]');
+      expect(result.sanitized).toContain('[CUSTOMER]');
+      expect(result.sanitized).toBe(content);
     });
   });
 

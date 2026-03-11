@@ -8,11 +8,15 @@ const MAX_LENGTH = 500;
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s]+/gi;
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const LARGE_NUMBER_PATTERN = /\b\d{5,}\b/g;
-const BRACKETED_PATTERN = /\[[A-Z]+\]/g;
+const BRACKETED_PATTERN = /\[(?![A-Z]+\])[^\]]+\]/g;
+const REDACTED_PATTERN = /\[REDACTED\]/g;
 
 export function sanitizeStage3(content: string): Stage3Result {
   const warnings: string[] = [];
   let sanitized = content;
+  
+  const redactedMatches = sanitized.match(REDACTED_PATTERN);
+  const redactedCount = redactedMatches ? redactedMatches.length : 0;
   
   const urlMatches = sanitized.match(URL_PATTERN);
   if (urlMatches) {
@@ -32,6 +36,11 @@ export function sanitizeStage3(content: string): Stage3Result {
   if (largeNumMatches) {
     sanitized = sanitized.replace(LARGE_NUMBER_PATTERN, '[NUMBER]');
     warnings.push('Large numbers replaced');
+  }
+  
+  if (redactedCount > 0) {
+    sanitized = sanitized.replace(/\[REDACTED\]/g, '[REDACTED]');
+    warnings.push(`${redactedCount} [REDACTED] tags preserved`);
   }
   
   sanitized = sanitized.replace(/\s+/g, ' ').trim();
