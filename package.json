@@ -2,7 +2,7 @@
   "name": "greenkeeper",
   "version": "1.0.0",
   "description": "_\"Bring work to the golf course.\"_",
-  "main": "index.js",
+  "type": "module",
   "directories": {
     "doc": "docs"
   },

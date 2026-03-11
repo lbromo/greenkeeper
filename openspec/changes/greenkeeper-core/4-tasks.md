@@ -10,20 +10,20 @@
 
 ### Daemon & Core Architecture
 - [ ] **Task 1.1:** Initialize TypeScript project (max ~10 files).
-- [ ] **Task 1.2:** Implement `schema-validator.ts` implementing `Contract 19` (max 1MB size, 10KB body limit, 280-char preview, schema match).
-- [ ] **Task 1.3:** Implement `orchestrator.ts` with `fs.watch` targeting `~/OneDrive/Greenkeeper/inbox/`.
-- [ ] **Task 1.4:** Implement Volume Threshold Monitoring (Panic Switch): Halt if >20 files/hour, move to `quarantine/`, emit E2EE `SystemSignal`.
-- [ ] **Task 1.5:** Implement post-processing routing: Move successfully processed files to `processed/` and invalid ones to `rejected/`.
+- [x] **Task 1.2:** Implement `schema-validator.ts` implementing `Contract 19` (max 1MB size, 10KB body limit, 280-char preview, schema match).
+- [x] **Task 1.3:** Implement `orchestrator.ts` with chokidar targeting `~/OneDrive/Greenkeeper/inbox/`.
+- [x] **Task 1.4:** Implement Volume Threshold Monitoring (Panic Switch): Halt if >20 files/hour, move to `quarantine/`, emit E2EE `SystemSignal`.
+- [x] **Task 1.5:** Implement post-processing routing: Move successfully processed files to `processed/` and invalid ones to `rejected/`.
 
 ### The Sanitizer Pipeline
-- [ ] **Task 2.1:** Implement `sanitizer/stage1-regex.ts` (Deterministic blocklist).
-- [ ] **Task 2.2:** Implement `sanitizer/stage2-llm.ts` (Azure AI Foundry API integration with strict redactor prompt).
-- [ ] **Task 2.3:** Implement `sanitizer/stage3-final.ts` (Length limit + final regex sweep).
+- [x] **Task 2.1:** Implement `sanitizer/stage1-regex.ts` (Deterministic blocklist).
+- [x] **Task 2.2:** Implement `sanitizer/stage2-llm.ts` (Azure AI Foundry API integration with strict redactor prompt).
+- [x] **Task 2.3:** Implement `sanitizer/stage3-final.ts` (Length limit + final regex sweep).
 
 ### Encryption & Delivery
-- [ ] **Task 3.1:** Implement `crypto.ts` (AES-256-GCM encryption with embedded nonce/timestamp).
-- [ ] **Task 3.2:** Implement `relay-worker/index.ts` (Cloudflare Worker KV with 20-min TTL).
-- [ ] **Task 3.3:** Implement network push from `orchestrator.ts` to CF Worker.
+- [x] **Task 3.1:** Implement `crypto.ts` (AES-256-GCM encryption with embedded nonce/timestamp).
+- [x] **Task 3.2:** Implement `relay-worker/index.ts` (Cloudflare Worker KV with 20-min TTL).
+- [x] **Task 3.3:** Implement network push from `orchestrator.ts` to CF Worker.
 
 ### Client Dashboard (PWA)
-- [ ] **Task 4.1:** Build `dashboard/index.html` (Local decryption via `sessionStorage`).
+- [x] **Task 4.1:** Build `dashboard/index.html` (Local decryption via `sessionStorage`).
