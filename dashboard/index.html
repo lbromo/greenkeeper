@@ -98,7 +98,11 @@
       }
 
       const messagesEl = document.getElementById('messages');
-      messagesEl.innerHTML = '<div style="color: #666;">Loading...</div>';
+      messagesEl.textContent = '';
+      const loadingEl = document.createElement('div');
+      loadingEl.style.color = '#666';
+      loadingEl.textContent = 'Loading...';
+      messagesEl.appendChild(loadingEl);
 
       try {
         const response = await fetch(relayUrl + '/keys', { 
@@ -113,8 +117,11 @@
         document.getElementById('messageCount').textContent = messageKeys.length;
         
         if (messageKeys.length === 0) {
-          messagesEl.innerHTML = '<div style="color: #666;">No messages yet</div>';
-          return;
+        const noMsgEl = document.createElement('div');
+        noMsgEl.style.color = '#666';
+        noMsgEl.textContent = 'No messages yet';
+        messagesEl.appendChild(noMsgEl);
+        return;
         }
 
         messagesEl.innerHTML = '';
@@ -166,7 +173,11 @@
           messagesEl.appendChild(noMsgEl);
         }
       } catch (error) {
-        messagesEl.innerHTML = '<div style="color: #ff4444;">Error: ' + escapeHtml(error.message) + '</div>';
+        messagesEl.textContent = '';
+        const errorEl = document.createElement('div');
+        errorEl.style.color = '#ff4444';
+        errorEl.textContent = 'Error: ' + error.message;
+        messagesEl.appendChild(errorEl);
       }
     }
 
