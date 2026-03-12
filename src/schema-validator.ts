@@ -6,7 +6,7 @@ const MAX_TIMESTAMP_AGE_MS = 5 * 60 * 1000;
 const MessageSchema = z.object({
   id: z.string().max(128),
   sender: z.string().max(100),
-  preview: z.string().max(280),
+  preview: z.string().max(2000),
   received_at: z.string().datetime(),
   chat_id: z.string().max(128).optional(),
   urgency: z.enum(['low', 'normal', 'high']).optional()
