@@ -105,13 +105,13 @@
       messagesEl.appendChild(loadingEl);
 
       try {
-        const response = await fetch(relayUrl + '/keys', { 
+        const response = await fetch(relayUrl, { 
           signal: AbortSignal.timeout(TIMEOUT_MS) 
         });
         
-        if (!response.ok) throw new Error('Failed to fetch keys');
+        if (!response.ok) { if (response.status === 404) throw new Error('Payload not found. It may have already been read and deleted.'); throw new Error(`Failed to fetch: ${response.statusText}`); }
         
-        const keys = await response.json();
+        const encryptedBlob = await response.json();
         messageKeys = keys.keys || [];
         
         document.getElementById('messageCount').textContent = messageKeys.length;
@@ -141,7 +141,7 @@
             });
             const payload = await resp.json();
             
-            const decrypted = await decryptPayload(payload, key);
+            const decrypted = await decryptPayload(encryptedBlob, key);
             
             const msgEl = document.createElement('div');
             msgEl.className = 'message';
