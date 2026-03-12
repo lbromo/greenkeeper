@@ -253,27 +253,56 @@
 
         try {
           const decrypted = await decryptPayload(encryptedBlob, key);
+          const inner = JSON.parse(decrypted.content);
+          const messages = inner.messages || [];
           
-          const msgEl = document.createElement('div');
-          msgEl.className = 'message';
+          // Status line
+          const statusEl = document.createElement('div');
+          statusEl.style.cssText = 'color: var(--success); margin-bottom: 1rem; font-size: 0.9rem;';
+          statusEl.textContent = messages.length + ' message' + (messages.length !== 1 ? 's' : '') + ' decrypted';
+          messagesEl.appendChild(statusEl);
           
-          const tsEl = document.createElement('div');
-          tsEl.className = 'timestamp';
-          tsEl.textContent = 'Payload timestamp: ' + new Date(encryptedBlob.timestamp).toLocaleString();
-          msgEl.appendChild(tsEl);
-          
-          const decEl = document.createElement('div');
-          decEl.className = 'decrypted';
-          
-          // Format the decrypted payload nicely
-          let content = JSON.stringify(decrypted, null, 2);
-          if (content.length > 2000) {
-            content = content.slice(0, 2000) + '...';
+          if (messages.length === 0) {
+            const emptyEl = document.createElement('div');
+            emptyEl.style.color = '#666';
+            emptyEl.textContent = 'No messages in this payload.';
+            messagesEl.appendChild(emptyEl);
           }
-          decEl.textContent = content;
           
-          msgEl.appendChild(decEl);
-          messagesEl.appendChild(msgEl);
+          for (const msg of messages) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'message';
+            
+            // Header row: sender + timestamp
+            const headerEl = document.createElement('div');
+            headerEl.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;';
+            
+            const senderEl = document.createElement('strong');
+            senderEl.style.color = 'var(--accent)';
+            let senderText = msg.sender || 'Unknown';
+            if (senderText.length > 100) senderText = senderText.slice(0, 100) + '...';
+            senderEl.textContent = senderText;
+            headerEl.appendChild(senderEl);
+            
+            if (msg.received_at) {
+              const timeEl = document.createElement('span');
+              timeEl.className = 'timestamp';
+              timeEl.textContent = new Date(msg.received_at).toLocaleString();
+              headerEl.appendChild(timeEl);
+            }
+            
+            cardEl.appendChild(headerEl);
+            
+            // Preview text
+            const previewEl = document.createElement('div');
+            previewEl.className = 'decrypted';
+            let preview = msg.preview || '';
+            if (preview.length > 2000) preview = preview.slice(0, 2000) + '...';
+            previewEl.textContent = preview;
+            cardEl.appendChild(previewEl);
+            
+            messagesEl.appendChild(cardEl);
+          }
 
         } catch (e) {
           console.error('Decryption failed:', e);

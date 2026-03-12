@@ -2,6 +2,8 @@ import { config } from 'dotenv';
 import { watchInbox, isPanicLocked } from './orchestrator.js';
 import { encryptPayload } from './crypto.js';
 import { sendToRelay } from './relay-client.js';
+import { sanitizeStage1 } from './sanitizer/stage1-regex.js';
+import { sanitizeStage3 } from './sanitizer/stage3-final.js';
 
 // Load .env variables
 config();
@@ -32,8 +34,35 @@ watchInbox({
     console.log(`\n📥 Received payload with ${parsed.messages?.length || 0} messages...`);
     
     try {
+      console.log('🧹 Sanitizing payload...');
+      // Sanitize each message preview through Stage 1 (regex) then Stage 3 (final sweep)
+      if (parsed.messages && Array.isArray(parsed.messages)) {
+        for (const msg of parsed.messages) {
+          if (msg.preview) {
+            const s1 = sanitizeStage1(msg.preview);
+            if (s1.blocked) {
+              console.warn('⚠️  Message blocked by Stage 1:', s1.reason);
+              msg.preview = '[BLOCKED BY SANITIZER]';
+            } else {
+              const s3 = sanitizeStage3(s1.sanitized || msg.preview);
+              msg.preview = s3.sanitized;
+              if (s3.warnings && s3.warnings.length > 0) {
+                console.log('   Stage 3 warnings:', s3.warnings.join(', '));
+              }
+            }
+          }
+          // Also sanitize sender field
+          if (msg.sender) {
+            const s1s = sanitizeStage1(msg.sender);
+            if (!s1s.blocked && s1s.sanitized) {
+              const s3s = sanitizeStage3(s1s.sanitized);
+              msg.sender = s3s.sanitized;
+            }
+          }
+        }
+      }
+      
       console.log('🔒 Encrypting payload...');
-      // crypto.ts expects a string
       const payloadString = JSON.stringify(parsed);
       const encrypted = encryptPayload(payloadString, CRYPTO_KEY);
       
