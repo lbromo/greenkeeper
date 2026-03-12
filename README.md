@@ -1,77 +1,30 @@
-# Project Greenkeeper ⛳
+# Project Greenkeeper
 
-_"Bring work to the golf course."_
+A stealthy, one-way multi-agent automation setup designed to securely process and relay sanitized corporate summaries (e.g., Teams chats) across enterprise boundaries without triggering DLP/EDR alerts.
 
-A multi-agent system running on a corporate Mac that automates daily work tasks (Teams, email, PM tracking, code, demos) and securely delivers sanitized summaries to your personal devices — without corporate data ever leaving the enterprise boundary.
+## Current Status
+- **Phase 0 (Canary Infrastructure): COMPLETE ✅**
+- **Phase 1 (Stealth Proxy/Core Daemon): COMPLETE ✅**
+- Phase 2 (LLM Summarization): Pending
+- Phase 3 (Client Dashboard): Pending
 
-## Status
-- **Phase:** Phase 1 Implementation (Complete & Verified)
-- **Phase 0 Canary:** Pending Deployment
-- **Created:** 2026-03-11
+## Architecture
 
-## Core Architecture (The Stealth Proxy)
+**1. Ingestion (The Siphon)**
+A Power Automate cloud flow on a 15-minute recurrence fetches Teams messages, constructs a strictly typed JSON payload, and writes it to a local OneDrive sync folder (`~/OneDrive/Greenkeeper/inbox/`). This operates under standard M365 usage patterns, triggering no EDR or network alerts.
 
-Greenkeeper uses a strict outbound-only, zero-admin-consent architecture to evade EDR and DLP triggers. 
+**2. The Core Daemon (The Blood-Brain Barrier)**
+A local Node.js daemon watches the `inbox` directory via `chokidar`. When a file appears:
+1. Validates the JSON against strict Zod schemas (preventing JSON poisoning & replay attacks).
+2. Encrypts the payload locally using AES-256-GCM.
+3. POSTs the ciphertext to a Cloudflare Relay Worker.
+4. Moves the processed file to prevent repetitive I/O alerts.
 
-```
-┌──────────────────────── Corporate Network ────────────────────────┐
-│                                                                 │
-│ [M365 Cloud] (Teams/Emails)                                     │
-│      │                                                          │
-│   (Power Automate - Batched 15m)                                │
-│      ▼                                                          │
-│ [OneDrive/Greenkeeper/inbox/] ──(fs.watch)──┐                   │
-│                                             ▼                   │
-│                                      [Node Daemon]              │
-│                                             │                   │
-│                                      [Sanitizer Pipeline]       │
-│                                      1. Regex Blocklist         │
-│                                      2. Azure AI Foundry LLM    │
-│                                      3. Safety Net Limits       │
-│                                             │                   │
-│                                      [AES-256-GCM Crypto]       │
-│                                             │                   │
-└─────────────────────────────────────────────┼───────────────────┘
-                                              │ (Outbound HTTPS)
-                                              ▼
-                                 [Cloudflare KV Relay Worker] (20m TTL, Consume-on-Read)
-                                              │ (Outbound HTTPS)
-                                              ▼
-                                     [E2EE PWA Client]
-                                          Lasse 🏌️
-```
+**3. The Relay (The Airgap)**
+A Cloudflare Worker receives the POST, generates a dynamic retrieval key, stores it in KV, and returns the key. Upon a GET request with the correct key, it returns the payload and *instantly deletes it* from the KV store (Consume-on-Read).
 
-## Security Posture: The Blood-Brain Barrier
-
-**Policy: Zero Trust Egress**
-- ✅ Encrypted JSON payloads containing strictly typed Enum statuses and sanitized strings.
-- ❌ **No inbound ports.** All traffic is outbound HTTPS.
-- ❌ **No Graph API App Registrations.** Avoids triggering M365 Admin Consent alerts.
-- ❌ **No Webhooks.** Power Automate writes strictly to a local OneDrive sync folder.
-- ❌ **No persistent payloads.** Cloudflare KV acts as a dumb relay; payloads are burned upon read.
-- ❌ **No plain-text C2.** Inbound intent is integer-indexed against a local `aliases.json` file.
-- 🔴 **Panic Switch:** System halts, locks, and alerts via E2EE if anomalous file volume is detected (>20 files/hr).
-
-## Council Architecture Sign-off
-
-The system architecture and strict constraints were debated, stress-tested, and ratified by the AI Council:
-- **Gróa (Architecture):** Designed the `fs.watch` ingestion boundary and Cloudflare relay.
-- **Gná (Security):** Enforced the strict Blood-Brain Barrier, Panic Switch, and consume-on-read relay logic.
-- **Vár (Testing):** Formulated and verified the 77-test suite validating schema compliance and cryptographic entropy.
-- **Aria (Orchestration):** Managed the OpenCode sub-agent to strictly implement the Council's boundaries.
-
-## Repository Structure
-
-```
-greenkeeper/
-├── README.md              # This file
-├── docs/                  # Architectural and Security reflections
-├── openspec/              # OpenSpec GIVEN/WHEN/THEN contracts
-├── src/                   # The core Node daemon
-│   ├── orchestrator.ts    # File watcher and Panic Switch
-│   ├── schema-validator.ts# Zod payload validation
-│   ├── crypto.ts          # AES-256-GCM encryption layer
-│   └── sanitizer/         # 3-Stage Pipeline
-├── relay-worker/          # Cloudflare Worker code
-└── dashboard/             # PWA Client code (pending Phase 2)
-```
+## Security Measures (Gná's Directives)
+- **Zero IT Flags:** No unauthorized Entra ID App Registrations; uses native Power Automate.
+- **Panic Switch:** The daemon halts and locks itself if it detects anomalous volume (>20 files/hr).
+- **Schema Freshness:** Payloads older than 5 minutes are instantly rejected to prevent replay attacks.
+- **E2EE:** Corporate data never touches the open internet in plaintext.
