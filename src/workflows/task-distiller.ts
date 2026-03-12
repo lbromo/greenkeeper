@@ -62,7 +62,8 @@ ${JSON.stringify(messages, null, 2)}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-key': azureApiKey,
+        'Authorization': `Bearer ${azureApiKey}`,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         messages: [
@@ -70,7 +71,7 @@ ${JSON.stringify(messages, null, 2)}
         ],
         system: "You are a professional task assistant. You always output valid JSON.",
         max_tokens: 4096,
-        anthropic_version: "bedrock-2023-05-31" // Common version for Azure/AWS Anthropic routing
+        model: "claude-opus-4-6"
       }),
     });
 
