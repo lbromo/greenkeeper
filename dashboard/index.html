@@ -196,7 +196,7 @@
     function showSetup() {
       document.getElementById('setupPanel').style.display = 'block';
       document.getElementById('dashboardPanel').style.display = 'none';
-      sessionStorage.removeItem('relayUrl');
+      
       sessionStorage.removeItem('encryptionKey');
     }
 
@@ -210,7 +210,7 @@
         return;
       }
 
-      sessionStorage.setItem('relayUrl', url);
+      
       sessionStorage.setItem('encryptionKey', key);
       
       document.getElementById('setupPanel').style.display = 'none';
@@ -220,7 +220,7 @@
     }
 
     async function fetchMessages() {
-      const relayUrl = sessionStorage.getItem('relayUrl');
+      const relayUrl = document.getElementById('relayUrl').value.trim();
       const key = sessionStorage.getItem('encryptionKey');
       
       if (!relayUrl || !key) {
@@ -292,8 +292,8 @@
     document.getElementById('connectBtn').addEventListener('click', showDashboard);
     document.getElementById('refreshBtn').addEventListener('click', showSetup);
 
-    if (sessionStorage.getItem('encryptionKey') && sessionStorage.getItem('relayUrl')) {
-      document.getElementById('relayUrl').value = sessionStorage.getItem('relayUrl');
+    if (sessionStorage.getItem('encryptionKey')) {
+      
       document.getElementById('encryptionKey').value = sessionStorage.getItem('encryptionKey');
       showDashboard();
     }
