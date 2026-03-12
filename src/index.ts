@@ -36,9 +36,14 @@ watchInbox({
       const encrypted = encryptPayload(parsed, CRYPTO_KEY);
       
       console.log('🚀 Sending to Cloudflare Relay...');
-      await sendToRelay(encrypted, { relayUrl: RELAY_URL });
+      const result = await sendToRelay(encrypted, { relayUrl: RELAY_URL });
       
-      console.log('✅ Payload successfully relayed!');
+      if (result.success && result.key) {
+        console.log(`✅ Relayed successfully!`);
+        console.log(`🔗 Retrieve via: ${RELAY_URL}?key=${result.key}`);
+      } else {
+        console.error(`❌ Relay failed:`, result.error);
+      }
     } catch (e: any) {
       console.error('❌ Pipeline failed:', e.message);
     }
