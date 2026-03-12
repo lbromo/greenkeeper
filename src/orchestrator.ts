@@ -150,10 +150,16 @@ export async function watchInbox(options: OrchestratorOptions): Promise<void> {
         await options.onMessage(result.parsed);
       }
       
-      await moveFile(filePath, resolve(processedPath, `${Date.now()}-${basename(filePath)}`));
+      const targetPath = resolve(processedPath, `${Date.now()}-${basename(filePath)}`);
+      console.log(`📁 Moving processed file to: ${targetPath}`);
+      await moveFile(filePath, targetPath);
+      console.log(`✅ Move complete!`);
     } else {
       console.error(`❌ Validation failed for ${basename(filePath)}: ${result.error}`);
-      await moveFile(filePath, resolve(rejectedPath, basename(filePath)));
+      const targetPath = resolve(rejectedPath, basename(filePath));
+      console.log(`📁 Moving rejected file to: ${targetPath}`);
+      await moveFile(filePath, targetPath);
+      console.log(`✅ Move complete!`);
     }
   });
   
