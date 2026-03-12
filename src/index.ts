@@ -1,19 +1,23 @@
 import { config } from 'dotenv';
 import { watchInbox, isPanicLocked } from './orchestrator.js';
+import { encryptPayload } from './crypto.js';
+import { sendToRelay } from './relay-client.js';
 
 // Load .env variables
 config();
 
 const WATCH_DIR = process.env.WATCH_DIR;
 const CRYPTO_KEY = process.env.CRYPTO_KEY;
+const RELAY_URL = process.env.RELAY_URL;
 
-if (!WATCH_DIR || !CRYPTO_KEY) {
-  console.error('Missing WATCH_DIR or CRYPTO_KEY in .env');
+if (!WATCH_DIR || !CRYPTO_KEY || !RELAY_URL) {
+  console.error('Missing WATCH_DIR, CRYPTO_KEY, or RELAY_URL in .env');
   process.exit(1);
 }
 
 console.log('🌱 Starting Greenkeeper Daemon...');
 console.log(`📂 Watching: ${WATCH_DIR}`);
+console.log(`🌐 Target: ${RELAY_URL}`);
 
 if (isPanicLocked()) {
   console.error('🚨 PANIC LOCK ACTIVE! Daemon refuses to start.');
@@ -23,7 +27,22 @@ if (isPanicLocked()) {
 
 watchInbox({
   inbox: WATCH_DIR,
-  encryptionKey: CRYPTO_KEY
+  encryptionKey: CRYPTO_KEY,
+  onMessage: async (parsed: any) => {
+    console.log(`\n📥 Received payload with ${parsed.messages?.length || 0} messages...`);
+    
+    try {
+      console.log('🔒 Encrypting payload...');
+      const encrypted = encryptPayload(parsed, CRYPTO_KEY);
+      
+      console.log('🚀 Sending to Cloudflare Relay...');
+      await sendToRelay(encrypted, { relayUrl: RELAY_URL });
+      
+      console.log('✅ Payload successfully relayed!');
+    } catch (e: any) {
+      console.error('❌ Pipeline failed:', e.message);
+    }
+  }
 }).catch((err: any) => {
   console.error('Fatal error:', err);
   process.exit(1);
