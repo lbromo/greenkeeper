@@ -117,7 +117,16 @@
           return;
         }
 
-        let html = '';
+        messagesEl.innerHTML = '';
+        
+        if (messageKeys.length === 0) {
+          const emptyEl = document.createElement('div');
+          emptyEl.style.color = '#666';
+          emptyEl.textContent = 'No messages yet';
+          messagesEl.appendChild(emptyEl);
+          return;
+        }
+
         for (const keyId of messageKeys.slice(0, 20)) {
           try {
             const resp = await fetch(relayUrl + '?key=' + keyId, {
@@ -127,16 +136,35 @@
             
             const decrypted = await decryptPayload(payload, key);
             
-            html += '<div class="message">';
-            html += '<div class="timestamp">' + new Date(payload.timestamp).toLocaleString() + '</div>';
-            html += '<div class="decrypted">' + escapeHtml(decrypted.content || JSON.stringify(decrypted)) + '</div>';
-            html += '</div>';
+            const msgEl = document.createElement('div');
+            msgEl.className = 'message';
+            
+            const tsEl = document.createElement('div');
+            tsEl.className = 'timestamp';
+            tsEl.textContent = new Date(payload.timestamp).toLocaleString();
+            msgEl.appendChild(tsEl);
+            
+            const decEl = document.createElement('div');
+            decEl.className = 'decrypted';
+            let content = decrypted.content || JSON.stringify(decrypted);
+            if (content.length > 2000) {
+              content = content.slice(0, 2000) + '...';
+            }
+            decEl.textContent = content;
+            msgEl.appendChild(decEl);
+            
+            messagesEl.appendChild(msgEl);
           } catch (e) {
             console.error('Failed to decrypt message:', e);
           }
         }
         
-        messagesEl.innerHTML = html || '<div style="color: #666;">No messages</div>';
+        if (messagesEl.children.length === 0) {
+          const noMsgEl = document.createElement('div');
+          noMsgEl.style.color = '#666';
+          noMsgEl.textContent = 'No messages';
+          messagesEl.appendChild(noMsgEl);
+        }
       } catch (error) {
         messagesEl.innerHTML = '<div style="color: #ff4444;">Error: ' + escapeHtml(error.message) + '</div>';
       }
@@ -151,21 +179,55 @@
       document.getElementById('dashboard').classList.add('hidden');
     }
 
-    function showDashboard() {
-      const key = document.getElementById('encryptionKey').value;
-      const relayUrl = document.getElementById('relayUrl').value;
+    function validateKey(key) {
+      if (!key) return { valid: false, error: 'Key is required' };
       
-      if (!key || key.length < 32) {
-        alert('Please enter a valid 32-byte key');
-        return;
+      let normalizedKey = key;
+      if (/^[0-9a-fA-F]{64}$/.test(key)) {
+        normalizedKey = hexToBytes(key);
+        if (normalizedKey.length !== 32) {
+          return { valid: false, error: 'Invalid hex key: must decode to 32 bytes' };
+        }
+      } else if (key.length < 32) {
+        return { valid: false, error: 'Key must be at least 32 bytes' };
+      } else if (key.length > 32) {
+        normalizedKey = key.slice(0, 32);
       }
+      
+      const uniqueChars = new Set(key.split('')).size;
+      const isWeak = uniqueChars <= 5;
+      
+      return { valid: true, key: normalizedKey, isWeak };
+    }
+
+    function hexToBytes(hex) {
+      const bytes = [];
+      for (let i = 0; i < hex.length; i += 2) {
+        bytes.push(parseInt(hex.substr(i, 2), 16));
+      }
+      return String.fromCharCode.apply(null, bytes);
+    }
+
+    function showDashboard() {
+      const keyInput = document.getElementById('encryptionKey').value;
+      const relayUrl = document.getElementById('relayUrl').value;
       
       if (!relayUrl) {
         alert('Please enter the Cloudflare Worker URL');
         return;
       }
 
-      sessionStorage.setItem('encryptionKey', key);
+      const keyValidation = validateKey(keyInput);
+      if (!keyValidation.valid) {
+        alert(keyValidation.error);
+        return;
+      }
+      
+      if (keyValidation.isWeak) {
+        alert('Warning: Your key has low entropy (repetitive characters). Consider using a stronger key.');
+      }
+
+      sessionStorage.setItem('encryptionKey', keyValidation.key);
       sessionStorage.setItem('relayUrl', relayUrl);
       
       document.getElementById('setup').classList.add('hidden');
