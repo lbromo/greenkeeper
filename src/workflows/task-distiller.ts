@@ -1,4 +1,3 @@
-import { OpenAIClient, AzureKeyCredential } from "@azure/openai";
 import { z } from 'zod';
 
 /**
@@ -19,20 +18,16 @@ export const DistilledTaskSchema = z.object({
 export type DistilledTaskSummary = z.infer<typeof DistilledTaskSchema>;
 
 /**
- * Distills actionable tasks from raw Teams messages using Azure AI Foundry.
+ * Distills actionable tasks from raw Teams messages using Azure AI Foundry (Anthropic).
  */
 export async function distillTasks(messages: any[]): Promise<DistilledTaskSummary> {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const azureApiKey = process.env.AZURE_OPENAI_API_KEY;
-  const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-4o';
+  const endpoint = "https://appliedcontrol-resource.services.ai.azure.com/anthropic/v1/messages";
+  const azureApiKey = process.env.AZURE_ANTHROPIC_API_KEY;
 
-  if (!endpoint || !azureApiKey) {
-    console.warn('⚠️ Missing Azure OpenAI configuration. Returning empty task list.');
-    return { tasks: [], summary: "Azure OpenAI not configured." };
+  if (!azureApiKey) {
+    console.warn('⚠️ Missing Azure Anthropic configuration. Returning empty task list.');
+    return { tasks: [], summary: "Azure Anthropic not configured." };
   }
-
-  // @ts-ignore - OpenAIClient exists in this beta version
-  const client = new OpenAIClient(endpoint, new AzureKeyCredential(azureApiKey));
 
   const prompt = `
 You are the Task Distiller for Project Greenkeeper.
@@ -63,20 +58,39 @@ ${JSON.stringify(messages, null, 2)}
 `;
 
   try {
-    const result = await client.getChatCompletions(deploymentName, [
-      { role: "system", content: "You are a professional task assistant. You always output valid JSON." },
-      { role: "user", content: prompt }
-    ], {
-      // @ts-ignore - responseFormat is supported in newer models/SDKs
-      responseFormat: { type: 'json_object' }
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': azureApiKey,
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        system: "You are a professional task assistant. You always output valid JSON.",
+        max_tokens: 4096,
+        anthropic_version: "bedrock-2023-05-31" // Common version for Azure/AWS Anthropic routing
+      }),
     });
 
-    const content = result.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from Azure OpenAI');
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Azure Anthropic API error (${response.status}): ${errorText}`);
     }
 
-    const parsed = JSON.parse(content);
+    const result: any = await response.json();
+    const content = result.content?.[0]?.text;
+    
+    if (!content) {
+      throw new Error('Empty response from Azure Anthropic');
+    }
+
+    // Anthropic sometimes wraps JSON in markdown blocks
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const cleanedContent = jsonMatch ? jsonMatch[0] : content;
+
+    const parsed = JSON.parse(cleanedContent);
     const validated = DistilledTaskSchema.parse(parsed);
     return validated;
   } catch (error: any) {
