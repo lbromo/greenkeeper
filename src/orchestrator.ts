@@ -3,7 +3,7 @@ import { validateSchema } from './schema-validator.js';
 import type { ValidationResult } from './schema-validator.js';
 import { moveFile } from './file-operations.js';
 import { resolve, basename, extname, dirname } from 'path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
 import { encryptPayload } from './crypto.js';
 import { sendToRelay } from './relay-client.js';
 
@@ -69,7 +69,6 @@ async function emitSystemSignal(key: string): Promise<void> {
 
 export function clearPanicLock(): void {
   if (existsSync(PANIC_LOCK_PATH)) {
-    const { unlinkSync } = require('fs');
     unlinkSync(PANIC_LOCK_PATH);
   }
 }
@@ -163,7 +162,6 @@ export async function watchInbox(options: OrchestratorOptions): Promise<void> {
 }
 
 function validateFile(filePath: string): ValidationResult {
-  const { readFileSync } = require('fs');
   const content = readFileSync(filePath, 'utf-8');
   return validateSchema(content);
 }
