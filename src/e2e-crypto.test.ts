@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { encryptPayload } from './crypto';
+import { encryptPayload } from './crypto.js';
 import { webcrypto } from 'crypto';
 
 // Polyfill atob for the test environment

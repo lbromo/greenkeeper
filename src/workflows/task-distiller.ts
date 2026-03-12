@@ -21,7 +21,7 @@ export type DistilledTaskSummary = z.infer<typeof DistilledTaskSchema>;
  * Distills actionable tasks from raw Teams messages using Azure AI Foundry (Anthropic).
  */
 export async function distillTasks(messages: any[]): Promise<DistilledTaskSummary> {
-  const endpoint = "https://appliedcontrol-resource.services.ai.azure.com/anthropic/v1/messages";
+  const endpoint = process.env.AZURE_ANTHROPIC_ENDPOINT || "https://appliedcontrol-resource.services.ai.azure.com/anthropic/v1/messages";
   const azureApiKey = process.env.AZURE_ANTHROPIC_API_KEY;
 
   if (!azureApiKey) {
