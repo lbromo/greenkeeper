@@ -9,7 +9,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "tsx src/index.ts"
+    "start": "npm run build && node dist/index.js",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
