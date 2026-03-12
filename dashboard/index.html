@@ -2,90 +2,221 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Greenkeeper Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1b26">
+  <title>Greenkeeper Glass</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; padding: 20px; }
-    .container { max-width: 800px; margin: 0 auto; }
-    h1 { color: #00ff88; margin-bottom: 20px; }
-    .status { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .status-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
-    .status-item:last-child { border-bottom: none; }
-    .label { color: #888; }
-    .value { color: #00ff88; }
-    .value.error { color: #ff4444; }
-    input { width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #e0e0e0; font-size: 16px; margin-bottom: 15px; }
-    input:focus { outline: none; border-color: #00ff88; }
-    button { width: 100%; padding: 12px; background: #00ff88; color: #000; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
-    button:hover { background: #00cc6a; }
-    .messages { background: #1a1a1a; border-radius: 8px; padding: 15px; margin-top: 20px; }
-    .message { background: #252525; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
-    .message:last-child { margin-bottom: 0; }
-    .timestamp { color: #666; font-size: 12px; }
-    .decrypted { color: #e0e0e0; margin-top: 5px; }
-    .hidden { display: none; }
+    :root {
+      --bg: #1a1b26;
+      --fg: #c0caf5;
+      --accent: #7aa2f7;
+      --error: #f7768e;
+      --success: #9ece6a;
+      --panel: #24283b;
+      --border: #414868;
+    }
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .setup-panel, .dashboard-panel {
+      background: var(--panel);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #9aa5ce;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: #16161e;
+      border: 1px solid var(--border);
+      color: var(--fg);
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .message {
+      background: #16161e;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      border-left: 4px solid var(--accent);
+      word-wrap: break-word;
+    }
+    .message .timestamp {
+      font-size: 0.8rem;
+      color: #9aa5ce;
+      margin-bottom: 0.5rem;
+    }
+    .message .decrypted {
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .error-log {
+      color: var(--error);
+      background: rgba(247, 118, 142, 0.1);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      display: none;
+      word-wrap: break-word;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      color: #9aa5ce;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .status-connected { background: var(--success); }
+    .status-error { background: var(--error); }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Greenkeeper Dashboard</h1>
     
-    <div id="setup" class="status">
-      <div class="status-item">
-        <span class="label">Encryption Key</span>
+    <div id="errorLog" class="error-log"></div>
+
+    <div id="setupPanel" class="setup-panel">
+      <div class="form-group">
+        <label for="relayUrl">Cloudflare Relay URL (with ?key=...)</label>
+        <input type="text" id="relayUrl" placeholder="https://...workers.dev?key=..." />
       </div>
-      <input type="password" id="encryptionKey" placeholder="Enter 32-byte encryption key" maxlength="32">
-      <div class="status-item">
-        <span class="label">Cloudflare Worker URL</span>
+      <div class="form-group">
+        <label for="encryptionKey">AES-256-GCM Key</label>
+        <input type="password" id="encryptionKey" placeholder="32-character base64 key" />
       </div>
-      <input type="text" id="relayUrl" placeholder="https://your-worker.workers.dev" value="">
-      <button id="connectBtn">Connect</button>
+      <button id="connectBtn">Decrypt & Read</button>
     </div>
 
-    <div id="dashboard" class="hidden">
-      <div class="status">
-        <div class="status-item">
-          <span class="label">Status</span>
-          <span class="value" id="status">Connected</span>
-        </div>
-        <div class="status-item">
-          <span class="label">Messages Received</span>
-          <span class="value" id="messageCount">0</span>
-        </div>
+    <div id="dashboardPanel" class="dashboard-panel" style="display: none;">
+      <div class="status-bar">
+        <div><span class="status-indicator status-connected"></span>Status: <span id="statusText">Connected</span></div>
       </div>
-      
-      <button id="refreshBtn">Refresh Messages</button>
-      
-      <div class="messages" id="messages">
-        <div style="color: #666;">No messages yet</div>
-      </div>
+      <div id="messages"></div>
+      <button id="refreshBtn" style="margin-top: 1rem; background: var(--panel); border: 1px solid var(--border); color: var(--fg);">Disconnect & Clear</button>
     </div>
   </div>
 
   <script>
-    const TIMEOUT_MS = 10000;
-    let messageKeys = [];
+    const TIMEOUT_MS = 10000; // 10 seconds
 
-    async function decryptPayload(payload, key) {
-      const keyBuffer = new TextEncoder().encode(key.padEnd(32, '0').slice(0, 32));
-      const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-      const authTag = Uint8Array.from(atob(payload.authTag), c => c.charCodeAt(0));
-      const ciphertext = Uint8Array.from(atob(payload.ciphertext), c => c.charCodeAt(0));
+    function showError(msg) {
+      const el = document.getElementById('errorLog');
+      el.textContent = 'Error: ' + msg;
+      el.style.display = 'block';
+    }
 
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw', keyBuffer, { name: 'AES-GCM' }, false, ['decrypt']
-      );
+    function hideError() {
+      document.getElementById('errorLog').style.display = 'none';
+    }
 
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv, tagLength: 128 },
-        cryptoKey,
-        ciphertext
-      );
+    async function decryptPayload(payload, keyBase64) {
+      try {
+        const keyBuffer = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+        const cryptoKey = await window.crypto.subtle.importKey(
+          'raw',
+          keyBuffer,
+          { name: 'AES-GCM' },
+          false,
+          ['decrypt']
+        );
 
-      const decoder = new TextDecoder();
-      const decoded = decoder.decode(decrypted);
-      return JSON.parse(decoded);
+        const ivBuffer = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+        const ciphertextBuffer = Uint8Array.from(atob(payload.ciphertext), c => c.charCodeAt(0));
+        const authTagBuffer = Uint8Array.from(atob(payload.authTag), c => c.charCodeAt(0));
+
+        const combinedBuffer = new Uint8Array(ciphertextBuffer.length + authTagBuffer.length);
+        combinedBuffer.set(ciphertextBuffer);
+        combinedBuffer.set(authTagBuffer, ciphertextBuffer.length);
+
+        const decryptedBuffer = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: ivBuffer },
+          cryptoKey,
+          combinedBuffer
+        );
+
+        const decoder = new TextDecoder();
+        return JSON.parse(decoder.decode(decryptedBuffer));
+      } catch (e) {
+        throw new Error('Decryption failed. Check key or payload format.');
+      }
+    }
+
+    function showSetup() {
+      document.getElementById('setupPanel').style.display = 'block';
+      document.getElementById('dashboardPanel').style.display = 'none';
+      sessionStorage.removeItem('relayUrl');
+      sessionStorage.removeItem('encryptionKey');
+    }
+
+    function showDashboard() {
+      hideError();
+      const url = document.getElementById('relayUrl').value.trim();
+      const key = document.getElementById('encryptionKey').value.trim();
+      
+      if (!url || !key) {
+        showError('Please provide both URL and Key');
+        return;
+      }
+
+      sessionStorage.setItem('relayUrl', url);
+      sessionStorage.setItem('encryptionKey', key);
+      
+      document.getElementById('setupPanel').style.display = 'none';
+      document.getElementById('dashboardPanel').style.display = 'block';
+      
+      fetchMessages();
     }
 
     async function fetchMessages() {
@@ -101,7 +232,7 @@
       messagesEl.textContent = '';
       const loadingEl = document.createElement('div');
       loadingEl.style.color = '#666';
-      loadingEl.textContent = 'Loading...';
+      loadingEl.textContent = 'Loading and decrypting...';
       messagesEl.appendChild(loadingEl);
 
       try {
@@ -109,148 +240,61 @@
           signal: AbortSignal.timeout(TIMEOUT_MS) 
         });
         
-        if (!response.ok) { if (response.status === 404) throw new Error('Payload not found. It may have already been read and deleted.'); throw new Error(`Failed to fetch: ${response.statusText}`); }
+        if (!response.ok) { 
+          if (response.status === 404) {
+             throw new Error('Payload not found. It may have already been read and deleted.');
+          }
+          throw new Error(`Failed to fetch: ${response.statusText}`); 
+        }
         
         const encryptedBlob = await response.json();
         
-        
-        
-        
-        if (!encryptedBlob) {
-        const noMsgEl = document.createElement('div');
-        noMsgEl.style.color = '#666';
-        noMsgEl.textContent = 'No messages yet';
-        messagesEl.appendChild(noMsgEl);
-        return;
-        }
+        messagesEl.textContent = ''; // clear loading
 
-        messagesEl.innerHTML = '';
-        
-        if (messageKeys.length === 0) {
-          const emptyEl = document.createElement('div');
-          emptyEl.style.color = '#666';
-          emptyEl.textContent = 'No messages yet';
-          messagesEl.appendChild(emptyEl);
-          return;
-        }
-
-        for (const keyId of messageKeys.slice(0, 20)) {
-          try {
-            const resp = await fetch(relayUrl + '?key=' + keyId, {
-              signal: AbortSignal.timeout(TIMEOUT_MS)
-            });
-            const payload = await resp.json();
-            
-            const decrypted = await decryptPayload(encryptedBlob, key);
-            
-            const msgEl = document.createElement('div');
-            msgEl.className = 'message';
-            
-            const tsEl = document.createElement('div');
-            tsEl.className = 'timestamp';
-            tsEl.textContent = new Date(payload.timestamp).toLocaleString();
-            msgEl.appendChild(tsEl);
-            
-            const decEl = document.createElement('div');
-            decEl.className = 'decrypted';
-            let content = decrypted.content || JSON.stringify(decrypted);
-            if (content.length > 2000) {
-              content = content.slice(0, 2000) + '...';
-            }
-            decEl.textContent = content;
-            msgEl.appendChild(decEl);
-            
-            messagesEl.appendChild(msgEl);
-          } catch (e) {
-            console.error('Failed to decrypt message:', e);
+        try {
+          const decrypted = await decryptPayload(encryptedBlob, key);
+          
+          const msgEl = document.createElement('div');
+          msgEl.className = 'message';
+          
+          const tsEl = document.createElement('div');
+          tsEl.className = 'timestamp';
+          tsEl.textContent = 'Payload timestamp: ' + new Date(encryptedBlob.timestamp).toLocaleString();
+          msgEl.appendChild(tsEl);
+          
+          const decEl = document.createElement('div');
+          decEl.className = 'decrypted';
+          
+          // Format the decrypted payload nicely
+          let content = JSON.stringify(decrypted, null, 2);
+          if (content.length > 2000) {
+            content = content.slice(0, 2000) + '...';
           }
+          decEl.textContent = content;
+          
+          msgEl.appendChild(decEl);
+          messagesEl.appendChild(msgEl);
+
+        } catch (e) {
+          console.error('Decryption failed:', e);
+          const errorEl = document.createElement('div');
+          errorEl.style.color = 'var(--error)';
+          errorEl.textContent = 'Decryption failed. Invalid key or payload.';
+          messagesEl.appendChild(errorEl);
         }
-        
-        if (messagesEl.children.length === 0) {
-          const noMsgEl = document.createElement('div');
-          noMsgEl.style.color = '#666';
-          noMsgEl.textContent = 'No messages';
-          messagesEl.appendChild(noMsgEl);
-        }
-      } catch (error) {
+
+      } catch (err) {
+        showError(err.message);
         messagesEl.textContent = '';
-        const errorEl = document.createElement('div');
-        errorEl.style.color = '#ff4444';
-        errorEl.textContent = 'Error: ' + error.message;
-        messagesEl.appendChild(errorEl);
       }
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function showSetup() {
-      document.getElementById('setup').classList.remove('hidden');
-      document.getElementById('dashboard').classList.add('hidden');
-    }
-
-    function validateKey(key) {
-      if (!key) return { valid: false, error: 'Key is required' };
-      
-      let normalizedKey = key;
-      if (/^[0-9a-fA-F]{64}$/.test(key)) {
-        normalizedKey = hexToBytes(key);
-        if (normalizedKey.length !== 32) {
-          return { valid: false, error: 'Invalid hex key: must decode to 32 bytes' };
-        }
-      } else if (key.length < 32) {
-        return { valid: false, error: 'Key must be at least 32 bytes' };
-      } else if (key.length > 32) {
-        normalizedKey = key.slice(0, 32);
-      }
-      
-      const uniqueChars = new Set(key.split('')).size;
-      const isWeak = uniqueChars <= 5;
-      
-      return { valid: true, key: normalizedKey, isWeak };
-    }
-
-    function hexToBytes(hex) {
-      const bytes = [];
-      for (let i = 0; i < hex.length; i += 2) {
-        bytes.push(parseInt(hex.substr(i, 2), 16));
-      }
-      return String.fromCharCode.apply(null, bytes);
-    }
-
-    function showDashboard() {
-      const keyInput = document.getElementById('encryptionKey').value;
-      const relayUrl = document.getElementById('relayUrl').value;
-      
-      if (!relayUrl) {
-        alert('Please enter the Cloudflare Worker URL');
-        return;
-      }
-
-      const keyValidation = validateKey(keyInput);
-      if (!keyValidation.valid) {
-        alert(keyValidation.error);
-        return;
-      }
-      
-      if (keyValidation.isWeak) {
-        alert('Warning: Your key has low entropy (repetitive characters). Consider using a stronger key.');
-      }
-
-      sessionStorage.setItem('encryptionKey', keyValidation.key);
-      sessionStorage.setItem('relayUrl', relayUrl);
-      
-      document.getElementById('setup').classList.add('hidden');
-      document.getElementById('dashboard').classList.remove('hidden');
-      
-      fetchMessages();
     }
 
     document.getElementById('connectBtn').addEventListener('click', showDashboard);
-    document.getElementById('refreshBtn').addEventListener('click', fetchMessages);
+    document.getElementById('refreshBtn').addEventListener('click', showSetup);
 
-    if (sessionStorage.getItem('encryptionKey')) {
+    if (sessionStorage.getItem('encryptionKey') && sessionStorage.getItem('relayUrl')) {
+      document.getElementById('relayUrl').value = sessionStorage.getItem('relayUrl');
+      document.getElementById('encryptionKey').value = sessionStorage.getItem('encryptionKey');
       showDashboard();
     }
   </script>
