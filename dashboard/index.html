@@ -112,11 +112,11 @@
         if (!response.ok) { if (response.status === 404) throw new Error('Payload not found. It may have already been read and deleted.'); throw new Error(`Failed to fetch: ${response.statusText}`); }
         
         const encryptedBlob = await response.json();
-        messageKeys = keys.keys || [];
         
-        document.getElementById('messageCount').textContent = messageKeys.length;
         
-        if (messageKeys.length === 0) {
+        
+        
+        if (!encryptedBlob) {
         const noMsgEl = document.createElement('div');
         noMsgEl.style.color = '#666';
         noMsgEl.textContent = 'No messages yet';
