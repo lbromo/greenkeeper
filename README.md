@@ -113,6 +113,16 @@ Cloudflare Worker → dynamic retrieval key → KV store → consume-on-read (in
 5. Cron-based polling (no external real-time triggers)
 6. Local council deliberation stays on MBP or encrypted channel only
 
+## The Council
+
+| Agent | Role | Focus |
+|-------|------|-------|
+| **Lasse** | Architect | Final authority, veto power, corporate environment setup |
+| **Aria** (Frigg) | Orchestrator | System synthesis, workflow management, agent mediation |
+| **Gróa** | Architecture | System design, data flow, integrations (Teams/Email), language choices |
+| **Gná** | Security | Threat modeling, blood-brain barrier enforcement, encryption, sanitization |
+| **Vár** | Testing | GIVEN-WHEN-THEN contracts, leak detection, workflow validation |
+
 ## Open Questions
 
 - [ ] Encrypted channel design for council deliberation (local-only vs. E2EE group chat)
