@@ -4,6 +4,7 @@ import { encryptPayload } from './crypto.js';
 import { sendToRelay } from './relay-client.js';
 import { sanitizeStage1 } from './sanitizer/stage1-regex.js';
 import { sanitizeStage3 } from './sanitizer/stage3-final.js';
+import { distillTasks } from './workflows/task-distiller.js';
 
 // Load .env variables
 config();
@@ -62,6 +63,11 @@ watchInbox({
         }
       }
       
+      console.log('🧠 Distilling tasks...');
+      const distillation = await distillTasks(parsed.messages || []);
+      // Attach distillation summary to payload
+      parsed.distillation = distillation;
+
       console.log('🔒 Encrypting payload...');
       const payloadString = JSON.stringify(parsed);
       const encrypted = encryptPayload(payloadString, CRYPTO_KEY);
