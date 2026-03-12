@@ -133,8 +133,8 @@
         <input type="text" id="relayUrl" placeholder="https://...workers.dev?key=..." />
       </div>
       <div class="form-group">
-        <label for="encryptionKey">AES-256-GCM Key</label>
-        <input type="password" id="encryptionKey" placeholder="32-character base64 key" />
+        <label for="encryptionKey">AES-256-GCM Key (hex)</label>
+        <input type="password" id="encryptionKey" placeholder="64-character hex key (from .env)" />
       </div>
       <button id="connectBtn">Decrypt & Read</button>
     </div>
@@ -161,9 +161,9 @@
       document.getElementById('errorLog').style.display = 'none';
     }
 
-    async function decryptPayload(payload, keyBase64) {
+    async function decryptPayload(payload, keyHex) {
       try {
-        const keyBuffer = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+        const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
         const cryptoKey = await window.crypto.subtle.importKey(
           'raw',
           keyBuffer,
