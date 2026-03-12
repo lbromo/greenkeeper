@@ -1,4 +1,4 @@
-import { rename, mkdir, readFileSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'fs';
+import { copyFileSync, mkdir, readFileSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'fs';
 import { dirname, resolve } from 'path';
 
 const PROCESSED_RETENTION_DAYS = 7;
@@ -15,10 +15,13 @@ export async function moveFile(source: string, dest: string): Promise<void> {
   });
   
   await new Promise<void>((resolve, reject) => {
-    rename(source, dest, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
+    try {
+      copyFileSync(source, dest);
+      unlinkSync(source);
+      resolve();
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
