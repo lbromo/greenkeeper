@@ -33,7 +33,9 @@ watchInbox({
     
     try {
       console.log('🔒 Encrypting payload...');
-      const encrypted = encryptPayload(parsed, CRYPTO_KEY);
+      // crypto.ts expects a string
+      const payloadString = JSON.stringify(parsed);
+      const encrypted = encryptPayload(payloadString, CRYPTO_KEY);
       
       console.log('🚀 Sending to Cloudflare Relay...');
       const result = await sendToRelay(encrypted, { relayUrl: RELAY_URL });
