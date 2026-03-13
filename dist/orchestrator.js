@@ -1,0 +1,154 @@
+import chokidar from 'chokidar';
+import { validateSchema } from './schema-validator.js';
+import { moveFile } from './file-operations.js';
+import { resolve, basename, extname, dirname } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
+import { encryptPayload } from './crypto.js';
+import { sendToRelay } from './relay-client.js';
+let watcher = null;
+let processedCount = 0;
+let lastHourCount = 0;
+let lastHourReset = Date.now();
+const PANIC_THRESHOLD = 20;
+const PANIC_WINDOW_MS = 60 * 60 * 1000;
+const PROCESSED_DIR = 'processed';
+const REJECTED_DIR = 'rejected';
+const HOME_DIR = process.env.HOME || process.env.USERPROFILE || dirname(dirname(process.execPath));
+const GREENKEEPER_DIR = resolve(HOME_DIR, '.greenkeeper');
+const PANIC_LOCK_PATH = resolve(GREENKEEPER_DIR, 'panic.lock');
+const RELAY_URL = process.env.RELAY_URL || 'https://relay.example.com/api/messages';
+function ensureDir(dir) {
+    if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+}
+export function isPanicLocked() {
+    return existsSync(PANIC_LOCK_PATH);
+}
+export function activatePanic(key) {
+    ensureDir(GREENKEEPER_DIR);
+    writeFileSync(PANIC_LOCK_PATH, JSON.stringify({
+        activatedAt: new Date().toISOString(),
+        keyPrefix: key.substring(0, 8)
+    }), { mode: 0o600 });
+}
+async function emitSystemSignal(key) {
+    const signalPayload = {
+        type: 'SYSTEM_SIGNAL',
+        signal: 'PANIC_ACTIVATED',
+        timestamp: new Date().toISOString(),
+        keyPrefix: key.substring(0, 8)
+    };
+    try {
+        await sendToRelay(encryptPayload(JSON.stringify(signalPayload), key), {
+            relayUrl: RELAY_URL,
+            maxRetries: 2,
+            timeout: 5000
+        });
+    }
+    catch {
+        // Best-effort signal emission - panic still proceeds
+    }
+}
+export function clearPanicLock() {
+    if (existsSync(PANIC_LOCK_PATH)) {
+        unlinkSync(PANIC_LOCK_PATH);
+    }
+}
+export async function triggerPanic(key) {
+    if (watcher) {
+        await watcher.close();
+        watcher = null;
+    }
+    await emitSystemSignal(key);
+    activatePanic(key);
+}
+export function isValidFile(filePath) {
+    const ext = extname(filePath).toLowerCase();
+    const name = basename(filePath);
+    if (ext !== '.json')
+        return false;
+    if (name.startsWith('.'))
+        return false;
+    return true;
+}
+function checkPanicThreshold() {
+    const now = Date.now();
+    if (now - lastHourReset > PANIC_WINDOW_MS) {
+        lastHourCount = 0;
+        lastHourReset = now;
+    }
+    lastHourCount++;
+    processedCount++;
+    return lastHourCount > PANIC_THRESHOLD;
+}
+export async function watchInbox(options) {
+    if (isPanicLocked()) {
+        throw new Error('PANIC_MODE_ACTIVE: Greenkeeper is locked. Remove ~/.greenkeeper/panic.lock to override.');
+    }
+    if (!options.encryptionKey) {
+        throw new Error('Encryption key required for panic signal emission');
+    }
+    const inboxPath = resolve(options.inbox);
+    const processedPath = resolve(options.processedDir || PROCESSED_DIR);
+    const rejectedPath = resolve(options.rejectedDir || REJECTED_DIR);
+    ensureDir(processedPath);
+    ensureDir(rejectedPath);
+    watcher = chokidar.watch(inboxPath, {
+        persistent: true,
+        awaitWriteFinish: {
+            stabilityThreshold: 1000,
+            pollInterval: 100
+        },
+        ignoreInitial: true,
+        depth: 0
+    });
+    watcher.on('add', async (filePath) => {
+        if (!isValidFile(filePath))
+            return;
+        const result = validateFile(filePath);
+        if (result.valid && result.parsed) {
+            const isPanic = checkPanicThreshold();
+            if (isPanic) {
+                await triggerPanic(options.encryptionKey);
+                await moveFile(filePath, resolve(rejectedPath, 'quarantine', basename(filePath)));
+                return;
+            }
+            if (options.onMessage) {
+                await options.onMessage(result.parsed);
+            }
+            const targetPath = resolve(processedPath, `${Date.now()}-${basename(filePath)}`);
+            console.log(`📁 Moving processed file to: ${targetPath}`);
+            await moveFile(filePath, targetPath);
+            console.log(`✅ Move complete!`);
+        }
+        else {
+            console.error(`❌ Validation failed for ${basename(filePath)}: ${result.error}`);
+            const targetPath = resolve(rejectedPath, basename(filePath));
+            console.log(`📁 Moving rejected file to: ${targetPath}`);
+            await moveFile(filePath, targetPath);
+            console.log(`✅ Move complete!`);
+        }
+    });
+    watcher.on('error', (error) => {
+        console.error('Watcher error:', error);
+    });
+}
+function validateFile(filePath) {
+    const content = readFileSync(filePath, 'utf-8');
+    return validateSchema(content);
+}
+export function stopWatching() {
+    if (watcher) {
+        watcher.close();
+        watcher = null;
+    }
+}
+export function getProcessedCount() {
+    return processedCount;
+}
+export function resetProcessedCount() {
+    processedCount = 0;
+    lastHourCount = 0;
+}
+//# sourceMappingURL=orchestrator.js.map

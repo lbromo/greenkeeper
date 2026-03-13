@@ -1,0 +1,67 @@
+import { copyFileSync, mkdir, readFileSync, writeFileSync, readdirSync, unlinkSync, statSync } from 'fs';
+import { dirname, resolve } from 'path';
+const PROCESSED_RETENTION_DAYS = 7;
+const REJECTED_RETENTION_DAYS = 30;
+export async function moveFile(source, dest) {
+    const destDir = dirname(dest);
+    await new Promise((resolve, reject) => {
+        mkdir(destDir, { recursive: true }, (err) => {
+            if (err)
+                reject(err);
+            else
+                resolve();
+        });
+    });
+    await new Promise((resolve, reject) => {
+        try {
+            copyFileSync(source, dest);
+            unlinkSync(source);
+            resolve();
+        }
+        catch (e) {
+            reject(e);
+        }
+    });
+}
+export function readJsonFile(filePath) {
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+}
+export function writeJsonFile(filePath, data) {
+    writeFileSync(filePath, JSON.stringify(data, null, 2));
+}
+export function cleanupOldFiles(directory, retentionDays) {
+    const now = Date.now();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const cutoff = now - (retentionDays * msPerDay);
+    let deletedCount = 0;
+    try {
+        const files = readdirSync(directory);
+        for (const file of files) {
+            const filePath = resolve(directory, file);
+            try {
+                const stats = statSync(filePath);
+                if (stats.isFile() && stats.mtimeMs < cutoff) {
+                    unlinkSync(filePath);
+                    deletedCount++;
+                }
+            }
+            catch {
+                // Skip files we can't stat
+            }
+        }
+    }
+    catch {
+        // Directory doesn't exist or can't be read
+    }
+    return deletedCount;
+}
+export function cleanupProcessedFiles(processedDir) {
+    return cleanupOldFiles(processedDir, PROCESSED_RETENTION_DAYS);
+}
+export function getFileAgeDays(filePath) {
+    const stats = statSync(filePath);
+    const msPerDay = 24 * 60 * 60 * 1000;
+    return (Date.now() - stats.mtimeMs) / msPerDay;
+}
+//# sourceMappingURL=file-operations.js.map
