@@ -1,7 +1,8 @@
 import { decryptPayload, EncryptedPayload } from './crypto.js';
+import { validateIntent } from './intent-handler.js';
 
-const RELAY_INTENT_URL = 'https://greenkeeper-relay.greenkeeper.workers.dev/intents';
-const POLL_INTERVAL_MS = 15000;
+const RELAY_INTENT_URL = process.env.RELAY_INTENT_URL || 'https://greenkeeper-relay.greenkeeper.workers.dev/intents';
+const POLL_INTERVAL_MS = process.env.NODE_ENV === 'test' ? 2000 : 15000;
 
 export interface IntentPayload {
   intent: 'confirm' | 'reject' | 'defer';
@@ -23,7 +24,7 @@ export class IntentPoller {
   start() {
     if (this.intervalId) return;
     
-    console.log('[IntentPoller] Starting poller (15s interval)...');
+    console.log(`[IntentPoller] Starting poller (${POLL_INTERVAL_MS}ms interval)...`);
     this.poll(); // Initial poll
     this.intervalId = setInterval(() => this.poll(), POLL_INTERVAL_MS);
   }
@@ -70,28 +71,26 @@ export class IntentPoller {
           }
 
           const rawPayload = JSON.parse(decryptedJson);
-          let intentPayload: IntentPayload;
+          
+          // TC-43.2 & TC-43.7: Validate and unmarshal using schema
+          const validated = validateIntent(rawPayload);
+          
+          const intentMap: Record<number, IntentPayload['intent']> = {
+            1: 'confirm',
+            2: 'reject',
+            3: 'defer'
+          };
 
-          if (rawPayload && typeof rawPayload.intent === 'number') {
-            // Support dashboard format: { taskId, intent: 1|2|3 }
-            const intentMap: Record<number, IntentPayload['intent']> = {
-              1: 'confirm',
-              2: 'reject',
-              3: 'defer'
-            };
-            intentPayload = {
-              intent: intentMap[rawPayload.intent] || 'defer',
-              context: { taskId: rawPayload.taskId },
-              timestamp: rawPayload.timestamp || new Date().toISOString()
-            };
-          } else {
-            intentPayload = rawPayload as IntentPayload;
-          }
+          const intentPayload: IntentPayload = {
+            intent: intentMap[validated.intent] || 'defer',
+            context: { taskId: validated.taskId },
+            timestamp: validated.timestamp
+          };
 
-          console.log(`[IntentPoller] Received intent: ${intentPayload.intent}`);
+          console.log(`[IntentPoller] Received intent: ${intentPayload.intent} for ${intentPayload.context.taskId}`);
           await this.onIntent(intentPayload);
-        } catch (err) {
-          console.error('[IntentPoller] Failed to decrypt or process intent:', err);
+        } catch (err: any) {
+          console.error('[IntentPoller] Failed to decrypt or process intent:', err.message);
         }
       }
 
