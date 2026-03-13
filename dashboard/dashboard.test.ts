@@ -361,7 +361,7 @@ describe('Contract 30: Task Intent UI (Phase 2, Step 3)', () => {
     document = env.document;
   });
 
-  it('TC-30.1: Distilled task cards contain Confirm (1) and Reject (2) buttons', () => {
+  it('TC-30.1: Distilled task cards contain Confirm (1), Reject (2), and Defer (3) buttons', () => {
     const messagesEl = document.getElementById('messages');
     const distEl = document.createElement('div');
     distEl.className = 'distillation-summary';
@@ -381,18 +381,26 @@ describe('Contract 30: Task Intent UI (Phase 2, Step 3)', () => {
     rejectBtn.className = 'action-btn action-reject';
     rejectBtn.textContent = '2: Reject';
     rejectBtn.dataset.intent = '2';
+
+    const deferBtn = document.createElement('button');
+    deferBtn.className = 'action-btn action-defer';
+    deferBtn.textContent = '3: Defer';
+    deferBtn.dataset.intent = '3';
     
     actionsEl.appendChild(confirmBtn);
     actionsEl.appendChild(rejectBtn);
+    actionsEl.appendChild(deferBtn);
     taskCard.appendChild(actionsEl);
     distEl.appendChild(taskCard);
     messagesEl.appendChild(distEl);
     
     const btns = messagesEl.querySelectorAll('.action-btn');
-    expect(btns.length).toBe(2);
+    expect(btns.length).toBe(3);
     expect(messagesEl.querySelector('.action-confirm').textContent).toContain('1');
     expect(messagesEl.querySelector('.action-reject').textContent).toContain('2');
+    expect(messagesEl.querySelector('.action-defer').textContent).toContain('3');
     expect(messagesEl.querySelector('.action-confirm').dataset.intent).toBe('1');
     expect(messagesEl.querySelector('.action-reject').dataset.intent).toBe('2');
+    expect(messagesEl.querySelector('.action-defer').dataset.intent).toBe('3');
   });
 });

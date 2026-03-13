@@ -193,6 +193,10 @@
       border-color: var(--error);
       color: var(--error);
     }
+    .action-defer {
+      border-color: #e0af68;
+      color: #e0af68;
+    }
     .error-log {
       color: var(--error);
       background: rgba(247, 118, 142, 0.1);
@@ -416,8 +420,15 @@
                 rejectBtn.dataset.intent = '2';
                 rejectBtn.onclick = () => console.log('Reject task:', task.title);
 
+                const deferBtn = document.createElement('button');
+                deferBtn.className = 'action-btn action-defer';
+                deferBtn.textContent = '3: Defer';
+                deferBtn.dataset.intent = '3';
+                deferBtn.onclick = () => console.log('Defer task:', task.title);
+
                 actionsEl.appendChild(confirmBtn);
                 actionsEl.appendChild(rejectBtn);
+                actionsEl.appendChild(deferBtn);
                 taskCard.appendChild(actionsEl);
 
                 distEl.appendChild(taskCard);
