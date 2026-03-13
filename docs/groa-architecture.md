@@ -240,8 +240,8 @@ interface OneDriveTeamsPayload {
   timestamp: string;           // ISO 8601, must be <5min old
   messages: Array<{
     id: string;                // max 128 chars
-    sender: string;            // display name only, max 100 chars
-    preview: string;           // max 280 chars
+    sender: string | null;     // display name only, max 100 chars
+    preview: string;           // max 5000 chars
     received_at: string;       // ISO 8601
     chat_id?: string;          // optional, max 128 chars
     urgency?: "low" | "normal" | "high";
