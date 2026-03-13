@@ -225,3 +225,20 @@ export async function notify(message: string, config: NotifierConfig): Promise<v
 ### Why Not E2EE (Option 1b)
 
 The ntfy iOS app cannot decrypt AES-GCM payloads. Encrypted notifications display as gibberish on the lock screen. Since structural pings contain zero corporate data, plaintext is acceptable per the Blood-Brain Barrier policy. E2EE alerting deferred to Phase 3/4 (native iOS app).
+
+## 10. Roadmap: Phase 3 & Phase 4
+
+### Phase 3: Native iOS App
+- Expo (React Native), reuses TypeScript crypto
+- iOS Keychain / Secure Enclave for AES key storage
+- FaceID gating for key access
+- APNs push notifications (replaces ntfy.sh)
+- CF Worker relay unchanged
+
+### Phase 4: Interactive Streaming & Stdin
+- Cloudflare Durable Objects + WebSockets (bidirectional, sub-200ms)
+- Ed25519 signing from Secure Enclave (FaceID-gated, non-extractable)
+- X25519 ephemeral key exchange (forward secrecy)
+- Stdin piped exclusively into OpenCode sub-agent (never raw shell)
+- OpenCode acts as intelligent sandbox via AGENTS.md constraints
+- Monotonic sequence numbers for replay protection
