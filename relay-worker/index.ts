@@ -15,6 +15,14 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    const url = new URL(request.url);
+    if (url.pathname === '/intent' && request.method === 'POST') {
+      return handleIntentPost(request, env);
+    }
+    if (url.pathname === '/intents' && request.method === 'GET') {
+      return handleIntentsGet(request, env);
+    }
+
     if (request.method === 'POST') {
       return handlePost(request, env);
     }
@@ -27,6 +35,50 @@ export default {
     });
   }
 };
+
+async function handleIntentPost(request: Request, env: Env): Promise<Response> {
+  try {
+    const payload = await request.json();
+    const key = `in:${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    await env.KV.put(key, JSON.stringify(payload), {
+      expirationTtl: 1200
+    });
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ success: false, error: 'Invalid payload' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}
+
+async function handleIntentsGet(request: Request, env: Env): Promise<Response> {
+  try {
+    const list = await env.KV.list({ prefix: 'in:' });
+    const intents = [];
+
+    for (const keyObj of list.keys) {
+      const value = await env.KV.get(keyObj.name);
+      if (value) {
+        intents.push(JSON.parse(value));
+        await env.KV.delete(keyObj.name);
+      }
+    }
+
+    return new Response(JSON.stringify({ intents }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch intents' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}
 
 async function handlePost(request: Request, env: Env): Promise<Response> {
   try {
