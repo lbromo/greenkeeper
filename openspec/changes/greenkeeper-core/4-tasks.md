@@ -40,10 +40,12 @@
 - [x] **Task 2.2:** Wire full Sanitizer pipeline (Stage 1->3) into orchestrator.ts (scrub BEFORE encryption).
 - [x] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
 
-### Step 3: Intents & Execution (Future)
-- [ ] **Task 5.1:** Implement aliases.json for deterministic inbound intents.
-- [ ] **Task 5.2:** Implement OpenCode Runner.
-- [x] **Task 5.3:** PWA intent submission UI (integer buttons).
+### Step 3: Intents & Execution (In Progress)
+- [ ] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intents` (KV consume-on-read).
+- [ ] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
+- [ ] **Task 5.1 (Part 3):** Daemon Poller (Jitter, try/catch decryption, nonce cache, timestamp checks).
+- [ ] **Task 5.2:** Implement `aliases.json` routing for deterministic execution.
+- [ ] **Task 5.3:** Implement OpenCode Runner (`shell: false`, regex strict args).
 
 ### Step 4: Task Distillation (Phase 2 Additions)
 - [x] **Task 6.1:** Implement \`src/workflows/task-distiller.ts\` to connect to Azure Anthropic.
