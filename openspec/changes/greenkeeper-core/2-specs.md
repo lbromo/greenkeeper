@@ -126,3 +126,17 @@ A stealthy, outbound-only multi-agent orchestrator that reads batched corporate 
 ---
 
 **Vár — OpenSpec 2-specs.md updated for Phase 2.**
+
+## Section 8: Outbound Alerting (ntfy.sh)
+
+### Contract 44: Notification Delivery
+```gherkin
+GIVEN: Daemon completes a distillation or receives an intent
+WHEN: notify() is called with a structural message
+THEN: MUST POST plaintext to https://ntfy.sh/{NTFY_TOPIC}
+  AND: MUST include headers Title, Priority, Tags
+  AND: MUST NOT include any corporate data in the body
+  AND: MUST respect NTFY_ENABLED flag (no-op when false)
+  AND: MUST validate NTFY_TOPIC >= 32 chars at startup
+  AND: MUST handle network errors gracefully (no crash)
+```
