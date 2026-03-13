@@ -17,12 +17,13 @@ describe('IntentPoller', () => {
   });
 
   it('should process valid intents', async () => {
-    const intent: IntentPayload = {
-      intent: 'confirm',
-      context: { taskId: '123' },
+    const rawPayload = {
+      taskId: '123',
+      intent: 1, // 1 maps to confirm
+      nonce: 'unique-nonce-123',
       timestamp: new Date().toISOString()
     };
-    const encrypted = encryptPayload(JSON.stringify(intent), cryptoKey);
+    const encrypted = encryptPayload(JSON.stringify(rawPayload), cryptoKey);
 
     (fetch as any).mockResolvedValue({
       ok: true,
@@ -38,10 +39,6 @@ describe('IntentPoller', () => {
   });
 
   it('should skip invalid/undefined intent payloads gracefully', async () => {
-    // Simulate the "undefined is not valid JSON" error by providing a non-JSON or malformed payload
-    // The issue reported was "undefined" is not valid JSON, 
-    // likely from JSON.parse(decryptPayload(undefined, ...))
-    
     (fetch as any).mockResolvedValue({
       ok: true,
       json: async () => ({ intents: [undefined, { ciphertext: 'invalid' }, null] })
@@ -68,9 +65,9 @@ describe('IntentPoller', () => {
   it('should support legacy dashboard intent format', async () => {
     const legacyPayload = {
       taskId: 'task-123',
-      intent: 1, // Confirm
+      intent: 1,
       timestamp: new Date().toISOString(),
-      nonce: 'random-uuid'
+      nonce: 'random-uuid-456'
     };
     const encrypted = encryptPayload(JSON.stringify(legacyPayload), cryptoKey);
 
