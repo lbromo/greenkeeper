@@ -75,6 +75,11 @@ A stealthy, outbound-only multi-agent orchestrator that reads batched corporate 
   - The Cloudflare Worker SHALL store encrypted intents with a TTL.
   - The local orchestrator SHALL poll for new intents periodically (or piggyback on file events).
   - The orchestrator SHALL decrypt and validate intents before routing to workflows.
+  - The orchestrator MUST reject payloads with timestamp > 5 minutes old (Replay Protection).
+  - The orchestrator MUST maintain an LRU cache of recently processed nonces.
+  - The orchestrator MUST wrap decryption in a non-fatal try/catch to silently drop malformed poisons.
+  - The polling mechanism MUST use randomized jitter (e.g., 6-14 minute intervals) to evade beaconing detection.
+  - The execution runner MUST use `child_process.spawn` or `execFile` with `shell: false`.
 
 ### 6. Task Distiller Workflow — Phase 2
 - The system SHALL implement a `task-distiller.ts` workflow that extracts actionable tasks from sanitized message batches.
