@@ -361,8 +361,8 @@ interface OneDriveTeamsPayload {
   timestamp: string;  // ISO 8601, MUST be <5min old
   messages: Array<{
     id: string;         // max 128 chars
-    sender: string;     // display name only, max 100 chars
-    preview: string;    // max 280 chars
+    sender: string | null; // display name only, max 100 chars
+    preview: string;    // max 5000 chars
     received_at: string; // ISO 8601
     chat_id?: string;   // optional, max 128 chars
     urgency?: "low" | "normal" | "high";
@@ -375,8 +375,8 @@ interface OneDriveTeamsPayload {
 - **TC-19.2 (Oversized File Attack):** 10MB JSON file in inbox/ → Rejected before parsing, moved to rejected/
 - **TC-19.3 (Timestamp Replay Attack):** File timestamp is `2026-03-10T10:00:00Z` (24h old) → Rejected (>5min = stale), moved to rejected/
 - **TC-19.4 (Malformed JSON):** File contains invalid JSON (missing bracket) → JSON.parse() error caught, moved to rejected/, log parse failure
-- **TC-19.5 (Field Length Overflow):** `message.preview` is 10,000 characters → Schema validation fails (exceeds 280 char limit), rejected
-- **TC-19.6 (Missing Required Field):** Message object missing `sender` field → Schema validation fails, moved to rejected/
+- **TC-19.5 (Field Length Overflow):** `message.preview` is 10,000 characters → Schema validation fails (exceeds 5000 char limit), rejected
+- **TC-19.6 (Missing Required Field):** Message object missing `id` field → Schema validation fails, moved to rejected/
 
 ---
 

@@ -94,6 +94,109 @@
       font-family: monospace;
       white-space: pre-wrap;
     }
+    .distillation-summary {
+      background: rgba(122, 162, 247, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .distillation-summary h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+    }
+    .distillation-summary .summary-text {
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+    .task-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .task-card:last-child {
+      margin-bottom: 0;
+    }
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.4rem;
+    }
+    .task-title {
+      font-weight: bold;
+      color: var(--fg);
+    }
+    .urgency-pill {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 10px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    .urgency-high { background: var(--error); color: var(--bg); }
+    .urgency-medium { background: #e0af68; color: var(--bg); }
+    .urgency-low { background: var(--success); color: var(--bg); }
+    .task-desc {
+      font-size: 0.85rem;
+      color: #9aa5ce;
+      margin-bottom: 0.75rem;
+    }
+    .task-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .action-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--fg);
+      width: auto;
+      flex: 1;
+      display: inline-block; /* Ensure they are visible and respect flex */
+      margin: 0;
+    }
+    .action-btn:hover {
+      background: var(--border);
+    }
+    .action-confirm {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(158, 206, 106, 0.1);
+    }
+    .action-reject {
+      border-color: var(--error);
+      color: var(--error);
+      background: rgba(247, 118, 142, 0.1);
+    }
+    .task-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .action-btn:hover {
+      background: var(--border);
+    }
+    .action-confirm {
+      border-color: var(--success);
+      color: var(--success);
+    }
+    .action-reject {
+      border-color: var(--error);
+      color: var(--error);
+    }
+    .action-defer {
+      border-color: #e0af68;
+      color: #e0af68;
+    }
     .error-log {
       color: var(--error);
       background: rgba(247, 118, 142, 0.1);
@@ -255,6 +358,84 @@
           const decrypted = await decryptPayload(encryptedBlob, key);
           const inner = JSON.parse(decrypted.content);
           const messages = inner.messages || [];
+          const distillation = inner.distillation;
+
+          // Render Distillation block if it exists
+          if (distillation) {
+            const distEl = document.createElement('div');
+            distEl.className = 'distillation-summary';
+            
+            const distTitle = document.createElement('h2');
+            distTitle.textContent = 'Distilled Summary';
+            distEl.appendChild(distTitle);
+
+            if (distillation.summary) {
+              const summaryText = document.createElement('div');
+              summaryText.className = 'summary-text';
+              summaryText.textContent = distillation.summary;
+              distEl.appendChild(summaryText);
+            }
+
+            if (distillation.tasks && distillation.tasks.length > 0) {
+              for (const task of distillation.tasks) {
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card';
+
+                const taskHeader = document.createElement('div');
+                taskHeader.className = 'task-header';
+
+                const taskTitle = document.createElement('span');
+                taskTitle.className = 'task-title';
+                taskTitle.textContent = task.title || 'Untitled Task';
+                taskHeader.appendChild(taskTitle);
+
+                if (task.urgency) {
+                  const urgencyPill = document.createElement('span');
+                  urgencyPill.className = 'urgency-pill urgency-' + task.urgency.toLowerCase();
+                  urgencyPill.textContent = task.urgency;
+                  taskHeader.appendChild(urgencyPill);
+                }
+                taskCard.appendChild(taskHeader);
+
+                if (task.description) {
+                  const taskDesc = document.createElement('div');
+                  taskDesc.className = 'task-desc';
+                  taskDesc.textContent = task.description;
+                  taskCard.appendChild(taskDesc);
+                }
+
+                // Action buttons for intent submission (Phase 2, Step 3)
+                const actionsEl = document.createElement('div');
+                actionsEl.className = 'task-actions';
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'action-btn action-confirm';
+                confirmBtn.textContent = '1: Confirm';
+                confirmBtn.dataset.intent = '1';
+                confirmBtn.onclick = () => console.log('Confirm task:', task.title);
+                
+                const rejectBtn = document.createElement('button');
+                rejectBtn.className = 'action-btn action-reject';
+                rejectBtn.textContent = '2: Reject';
+                rejectBtn.dataset.intent = '2';
+                rejectBtn.onclick = () => console.log('Reject task:', task.title);
+
+                const deferBtn = document.createElement('button');
+                deferBtn.className = 'action-btn action-defer';
+                deferBtn.textContent = '3: Defer';
+                deferBtn.dataset.intent = '3';
+                deferBtn.onclick = () => console.log('Defer task:', task.title);
+
+                actionsEl.appendChild(confirmBtn);
+                actionsEl.appendChild(rejectBtn);
+                actionsEl.appendChild(deferBtn);
+                taskCard.appendChild(actionsEl);
+
+                distEl.appendChild(taskCard);
+              }
+            }
+            messagesEl.appendChild(distEl);
+          }
           
           // Status line
           const statusEl = document.createElement('div');

@@ -1,1 +1,5 @@
 node_modules/\n.env\n.env.local\n.DS_Store\ncoverage/\ndist/\nmock-onedrive/\n
+node_modules/
+dist/
+.env
+relay-worker/wrangler.json

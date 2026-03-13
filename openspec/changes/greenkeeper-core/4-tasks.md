@@ -31,16 +31,22 @@
 - [x] **Task 4.2:** One-shot fetch model (URL = the key, no /keys endpoint).
 - [x] **Task 4.3:** Hex key input support (matches .env CRYPTO_KEY format).
 - [x] **Task 4.4:** Remove stale URL caching from sessionStorage.
-- [ ] **Task 4.5:** Pretty-render decrypted messages[] as individual cards (sender, timestamp, preview).
+- [x] **Task 4.5:** Pretty-render decrypted messages[] as individual cards (sender, timestamp, preview).
 - [ ] **Task 4.6:** Implement Vitest + happy-dom test suite for dashboard contracts (TC-22 to TC-28).
 
 ### Step 2: Wire Sanitizer into Orchestrator
 - [x] **Task 2.1:** Implement sanitizer/stage1-regex.ts (Deterministic blocklist).
 - [x] **Task 2.4:** Implement sanitizer/stage3-final.ts (Length limit + final regex sweep).
-- [ ] **Task 2.2:** Wire full Sanitizer pipeline (Stage 1->3) into orchestrator.ts (scrub BEFORE encryption).
-- [ ] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
+- [x] **Task 2.2:** Wire full Sanitizer pipeline (Stage 1->3) into orchestrator.ts (scrub BEFORE encryption).
+- [x] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
 
 ### Step 3: Intents & Execution (Future)
 - [ ] **Task 5.1:** Implement aliases.json for deterministic inbound intents.
 - [ ] **Task 5.2:** Implement OpenCode Runner.
 - [ ] **Task 5.3:** PWA intent submission UI (integer buttons).
+
+### Step 4: Task Distillation (Phase 2 Additions)
+- [x] **Task 6.1:** Implement \`src/workflows/task-distiller.ts\` to connect to Azure Anthropic.
+- [x] **Task 6.2:** Define Zod schema \`DistilledTaskSchema\` following blood-brain barrier policy.
+- [x] **Task 6.3:** Wire task distiller into \`src/index.ts\` (orchestrator).
+- [x] **Task 6.4:** Update \`dashboard/index.html\` to render the distillation summary card.
