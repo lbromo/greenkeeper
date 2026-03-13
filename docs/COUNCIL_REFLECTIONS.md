@@ -244,3 +244,228 @@ The use of `ntfy.sh` as a public message bus for outbound alerting is approved u
 - ntfy is a "go check" signal, not a data channel.
 
 **Phase 3/4 note:** Native iOS app (Expo/React Native) with APNs, Secure Enclave key storage, and FaceID gating is the long-term replacement for both ntfy and the PWA.
+
+---
+
+## 2026-03-13: Phase 2 Outbound Alerting (ntfy.sh)
+
+### Context
+The daemon currently falls back to a Discord webhook for alerting when new distillations are ready. Discord sees the payload in plaintext, which violates the Blood-Brain Barrier principle.
+
+### Problem Statement
+We need an out-of-band notification system to alert Lasse when:
+- New task distillations are ready
+- Task execution completes
+- Panic switch triggers
+
+### Decision: ntfy.sh with Plaintext Structural Pings (Option 1a)
+
+**Proposed by:** Gróa (Architect)  
+**Security Approved by:** Gná (Security Specialist)  
+**Date:** 2026-03-13 20:50 GMT+1
+
+---
+
+## Gróa — Architecture: ntfy.sh Integration
+
+### Core Insight
+Notifications are pings, not data channels. The Cloudflare Worker relay already handles encrypted payload delivery. We just need a lightweight way to tell Lasse "go check the Glass."
+
+### Solution: Plaintext Structural Pings to Secret Topic
+Send generic status pings (no corporate data) to a high-entropy ntfy.sh topic. The iOS ntfy app displays the notification, user taps, and opens the PWA Dashboard.
+
+### Architecture
+```
+Daemon detects new distillation
+  → Compose alert string: "📬 3 new tasks distilled"
+  → POST to https://ntfy.sh/{NTFY_TOPIC}
+  → ntfy pushes to iOS app via APNs
+  → User taps → opens PWA dashboard
+```
+
+### Implementation
+**One new file:** `src/notifier.ts` (~20 lines)
+
+```typescript
+export async function notify(message: string): Promise<void> {
+  await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    method: 'POST',
+    headers: {
+      'Title': 'Greenkeeper',
+      'Priority': '3',
+      'Tags': 'seedling'
+    },
+    body: message
+  });
+}
+```
+
+### Configuration
+Two new `.env` variables:
+- `NTFY_TOPIC` — 32-char hex string (generated via `crypto.randomBytes(16).toString('hex')`)
+- `NTFY_ENABLED=true` — Feature flag
+
+### Why Not E2EE?
+The iOS ntfy app cannot decrypt AES-GCM payloads. Sending encrypted blobs would display gibberish on the lock screen. A generic structural ping contains no sensitive data, so encryption adds complexity for zero security gain.
+
+### Allowed Notification Formats
+- ✅ "📬 3 new tasks distilled"
+- ✅ "✅ Task execution complete"
+- ✅ "🚨 Panic switch triggered"
+- ❌ "📬 Email from John Doe about Project X"
+
+**Status:** Approved by Council
+
+---
+
+## Gná — Security: ntfy.sh Threat Model
+
+### Threat Assessment
+Using a public push server (ntfy.sh) introduces a metadata exposure risk, but it is acceptable under the following constraints.
+
+### What ntfy.sh Sees
+1. **IP Address** — The daemon's public IP (corporate network egress)
+2. **Timestamp** — When the notification was sent
+3. **Topic Name** — The random string used as the channel identifier
+4. **Notification Body** — The plaintext ping message
+
+### What ntfy.sh Does NOT See
+- The actual distilled task content (stored in CF Worker KV, E2EE)
+- The encryption key
+- The PWA dashboard URL
+- The corporate message source data
+
+### Mandatory Security Guardrails
+
+#### 1. No Context Leakage
+Alert strings must be strictly structural with no corporate context.
+
+**ALLOWED:**
+- "📬 2 new tasks distilled"
+- "✅ Task #abc123 complete"
+- "🚨 Panic switch triggered"
+
+**DENIED:**
+- "📬 Email from John Doe about Grundfos Project X"
+- "✅ Task: Update customer database with PII"
+- "🚨 Detected anomalous volume in inbox"
+
+**Enforcement:** The `notify()` function must never receive the actual payload data. It only receives pre-sanitized structural strings from the orchestrator.
+
+#### 2. Topic Secrecy
+The `NTFY_TOPIC` must be a high-entropy string to prevent brute-force discovery.
+
+**Requirements:**
+- Minimum 32 characters
+- Generated via CSPRNG (e.g., `crypto.randomBytes(16).toString('hex')`)
+- Never logged or committed to Git
+- Stored in `.env` (excluded via `.gitignore`)
+
+**Threat Model:** If an attacker discovers the topic, they see meaningless pings like "📬 3 new tasks." Without access to the CF Worker KV or the encryption key, the pings provide no actionable intelligence.
+
+#### 3. No Action Links
+Notifications must NOT contain URLs with sensitive tokens or parameters.
+
+**DENIED:**
+- "New tasks: https://dashboard.example.com?key=abc123"
+- "Click here: https://relay.workers.dev/intent?token=xyz"
+
+**ALLOWED:**
+- Plain text notification with no links
+- User manually opens PWA from home screen
+
+**Rationale:** A URL with embedded secrets could leak via notification history, system logs, or analytics.
+
+### Risk Acceptance
+The metadata exposure (IP, timestamp, structural ping) is acceptable for a Phase 2 alerting mechanism. The notification contains zero corporate data, and the topic is secret.
+
+For Phase 3/4, we will evaluate a native iOS app with APNs and Secure Enclave, which eliminates the third-party relay entirely.
+
+**Status:** Security constraints approved by Gná
+
+---
+
+## Vár — Quality: Contract 44 Test Specification
+
+### Contract 44: Outbound Notification (ntfy.sh)
+
+**Component:** Outbound Alerting  
+**Test File:** `src/notifier.test.ts`  
+**Test Count:** 5 (all automated, no production alerts during tests)
+
+### Test Cases
+
+#### TC-44.1: Notification Sends to Correct Topic
+```gherkin
+GIVEN: notifier.ts configured with test topic
+WHEN: notify(message) called
+THEN: MUST POST to https://ntfy.sh/{NTFY_TOPIC}
+  AND: MUST include Title: "Greenkeeper" header
+  AND: MUST include Priority: "3" header
+  AND: MUST include Tags: "seedling" header
+```
+
+**Implementation:** Mock `fetch` using `vi.spyOn(global, 'fetch')`
+
+#### TC-44.2: No Payload Data Leakage
+```gherkin
+GIVEN: Orchestrator has distilled task with content "Email from John Doe"
+WHEN: notify() called from orchestrator
+THEN: Message body MUST NOT contain "John Doe"
+  AND: Message body MUST be structural only (e.g., "📬 2 new tasks")
+  AND: MUST NOT contain raw payload fields
+```
+
+**Critical:** This test proves the Blood-Brain Barrier is maintained.
+
+#### TC-44.3: Notification Disabled Flag
+```gherkin
+GIVEN: NTFY_ENABLED=false in .env
+WHEN: notify() called
+THEN: MUST NOT send HTTP request
+  AND: MUST log "Notifications disabled"
+```
+
+#### TC-44.4: Network Error Handling
+```gherkin
+GIVEN: ntfy.sh is unreachable (timeout/500 error)
+WHEN: notify() called
+THEN: MUST log error
+  AND: MUST NOT crash daemon
+  AND: MUST NOT retry infinitely
+```
+
+**Rationale:** Notification failures must not block the orchestrator loop.
+
+#### TC-44.5: Topic Entropy Validation
+```gherkin
+GIVEN: NTFY_TOPIC in .env
+WHEN: notifier.ts loads configuration
+THEN: MUST reject topics with < 32 characters
+  AND: MUST reject topics with only alphanumeric (no entropy)
+  AND: MUST accept 32-char hex strings
+```
+
+**Implementation:** Validate during module initialization, refuse to start if weak.
+
+### Local Testing Strategy
+All tests use mocked `fetch` via `vi.spyOn(global, 'fetch')`. No actual HTTP requests are made during `npm test`.
+
+**Test topic:** Use `NTFY_TOPIC=test-greenkeeper-local-do-not-use` in test environment.
+
+### Acceptance Criteria
+- [ ] All 5 test cases pass
+- [ ] No production HTTP requests during `npm test`
+- [ ] `notify()` function never receives raw payload data (code review + test)
+- [ ] Topic entropy validated at startup
+
+**Status:** Contract 44 finalized by Vár
+
+---
+
+**Council Members:**
+- **Gróa** (1481243736758292502) — Architecture Specialist
+- **Gná** (1481244011368022139) — Security Specialist  
+- **Vár** (1481244153017798708) — Test Specialist
+
+**Moderator:** Aria (1478861544816115935)
