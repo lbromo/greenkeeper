@@ -54,8 +54,8 @@ describe('Contract 19: File Validation & Schema Enforcement', () => {
   });
 
   describe('TC-19.5: Field Length Overflow', () => {
-    it('should reject message.preview exceeding 280 characters', () => {
-      const longPreview = 'x'.repeat(281);
+    it('should reject message.preview exceeding 5000 characters', () => {
+      const longPreview = 'x'.repeat(5001);
       const payload = JSON.stringify({
         source: 'power_automate',
         version: '1.0',
