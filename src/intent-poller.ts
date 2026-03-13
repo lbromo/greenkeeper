@@ -1,6 +1,6 @@
 import { decryptPayload, EncryptedPayload } from './crypto.js';
 
-const RELAY_INTENT_URL = 'https://greenkeeper-relay.greenkeeper.workers.dev/intent';
+const RELAY_INTENT_URL = 'https://greenkeeper-relay.greenkeeper.workers.dev/intents';
 const POLL_INTERVAL_MS = 15000;
 
 export interface IntentPayload {
@@ -43,22 +43,30 @@ export class IntentPoller {
     try {
       const response = await fetch(RELAY_INTENT_URL);
       
-      if (response.status === 404) {
-        // No pending intents
-        return;
-      }
-
       if (!response.ok) {
-        console.error(`[IntentPoller] Fetch failed: ${response.status} ${response.statusText}`);
+        if (response.status !== 404) {
+          console.error(`[IntentPoller] Fetch failed: ${response.status} ${response.statusText}`);
+        }
         return;
       }
 
-      const encryptedPayload = (await response.json()) as EncryptedPayload;
-      const decryptedJson = decryptPayload(encryptedPayload, this.cryptoKey);
-      const intentPayload = JSON.parse(decryptedJson) as IntentPayload;
+      const { intents } = (await response.json()) as { intents: EncryptedPayload[] };
+      
+      if (!intents || intents.length === 0) {
+        return;
+      }
 
-      console.log(`[IntentPoller] Received intent: ${intentPayload.intent}`);
-      await this.onIntent(intentPayload);
+      for (const encryptedPayload of intents) {
+        try {
+          const decryptedJson = decryptPayload(encryptedPayload, this.cryptoKey);
+          const intentPayload = JSON.parse(decryptedJson) as IntentPayload;
+
+          console.log(`[IntentPoller] Received intent: ${intentPayload.intent}`);
+          await this.onIntent(intentPayload);
+        } catch (err) {
+          console.error('[IntentPoller] Failed to decrypt or process intent:', err);
+        }
+      }
 
     } catch (error) {
       console.error('[IntentPoller] Error during poll:', error);
