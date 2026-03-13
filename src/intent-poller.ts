@@ -3,8 +3,8 @@ import { validateIntent } from './intent-handler.js';
 import { notify } from './notifier.js';
 import { executeIntent } from './workflows/opencode-runner.js';
 
-const RELAY_INTENT_URL = process.env.RELAY_INTENT_URL || 'https://greenkeeper-relay.greenkeeper.workers.dev/intents';
 const RELAY_URL = process.env.RELAY_URL || 'https://relay.example.com/api/messages';
+const RELAY_INTENT_URL = process.env.RELAY_INTENT_URL || (RELAY_URL.replace(/\/$/, '') + '/intents');
 const POLL_INTERVAL_MS = process.env.NODE_ENV === 'test' ? 2000 : 15000;
 
 export interface IntentPayload {
@@ -51,7 +51,8 @@ export class IntentPoller {
       
       if (!response.ok) {
         if (response.status !== 404) {
-          console.error(`[IntentPoller] Fetch failed: ${response.status} ${response.statusText}`);
+          const body = await response.text().catch(() => '');
+          console.error(`[IntentPoller] Fetch failed: ${response.status} ${response.statusText} - ${body}`);
         }
         return;
       }

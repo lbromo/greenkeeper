@@ -1,24 +1,12 @@
 {
-  "aliases": {
-    "engineering": ["dev-team@company.com", "engineering@company.com"],
-    "security": ["sec-team@company.com", "security@company.com"],
-    "operations": ["ops-team@company.com", "operations@company.com"],
-    "legal": ["legal@company.com", "compliance@company.com"]
+  "1": {
+    "command": ["/bin/echo", "Success!"],
+    "timeout": 300000,
+    "description": "Confirm task execution"
   },
-  "routing": {
-    "default": "engineering",
-    "priority": ["security", "legal"]
-  },
-  "teams": {
-    "channel": "general",
-    "notify_on": ["panic", "error", "daily_summary"]
-  },
-  "email": {
-    "relay": "relay@example.com",
-    "notify_on": ["panic", "critical"]
-  },
-  "webhook": {
-    "url": "",
-    "notify_on": ["all"]
+  "2": {
+    "command": ["/bin/echo", "Rejected!"],
+    "timeout": 300000,
+    "description": "Reject task execution"
   }
 }
