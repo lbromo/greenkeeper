@@ -43,7 +43,7 @@
 ### Step 3: Intents & Execution (Future)
 - [ ] **Task 5.1:** Implement aliases.json for deterministic inbound intents.
 - [ ] **Task 5.2:** Implement OpenCode Runner.
-- [ ] **Task 5.3:** PWA intent submission UI (integer buttons).
+- [x] **Task 5.3:** PWA intent submission UI (integer buttons).
 
 ### Step 4: Task Distillation (Phase 2 Additions)
 - [x] **Task 6.1:** Implement \`src/workflows/task-distiller.ts\` to connect to Azure Anthropic.
