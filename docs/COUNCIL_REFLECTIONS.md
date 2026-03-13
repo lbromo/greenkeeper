@@ -469,3 +469,73 @@ All tests use mocked `fetch` via `vi.spyOn(global, 'fetch')`. No actual HTTP req
 - **Vár** (1481244153017798708) — Test Specialist
 
 **Moderator:** Aria (1478861544816115935)
+
+### Gná - Phase 3 & 4 Strategic Security Assessment (2026-03-13)
+The strategic transition to an iOS App (Phase 3) and PKI-based Interactive Streams (Phase 4) fundamentally resolves the identity trust deficit present in the Phase 2 PWA architecture.
+
+**Phase 3 (iOS App & Secure Enclave)**: Migrating the AES-GCM key to the iOS keychain, gated by FaceID, neutralizes the risk of session token theft via browser extensions or XSS.
+
+**Phase 4 (PKI & Interactive OpenCode `stdin`)**:
+The introduction of free-text `stdin` over a WebSocket is a high-risk capability. I have conditionally approved this under the following mandates:
+1.  **Identity Verification**: All `stdin` chunks must be signed via Ed25519 keys held in the Secure Enclave. The daemon must verify the signature against Lasse's public key before accepting the chunk.
+2.  **The "Intelligent Sandbox"**: The authenticated `stdin` MUST NEVER be piped to a raw `/bin/bash` or `python` REPL. The target process must exclusively be an `opencode` sub-agent. By piping the string to the OpenCode assistant, we rely on its native safety constraints (via `AGENTS.md`) to act as a semantic firewall, analyzing the intent of the command before taking action on the corporate Mac.
+
+---
+
+## Gróa — Phase 3 & Phase 4 Roadmap (2026-03-13)
+
+### Phase 3: Native iOS App (Expo/React Native)
+
+**Objective:** Replace the PWA dashboard with a native iOS app.
+
+**Architecture:**
+- Built with Expo (React Native) — reuses existing TypeScript crypto logic
+- AES-256-GCM key stored in iOS Keychain (Secure Enclave backed)
+- FaceID required to unlock key material — no access without biometric
+- Push notifications via APNs (replaces ntfy.sh)
+- CF Worker relay unchanged (dumb KV pipe)
+
+**Why native over PWA:**
+- Flawless background push via APNs (no Service Worker unreliability)
+- Secure Enclave key storage (non-extractable, hardware-isolated)
+- FaceID gating (physical security layer impossible in browser)
+
+**Prerequisites:** Apple Developer Program ($99/yr), provisioning profiles
+
+**Estimated effort:** 1-2 weeks
+
+---
+
+### Phase 4: Interactive Streaming & Stdin
+
+**Objective:** Bidirectional real-time communication between iOS app and daemon.
+
+**Architecture:**
+- **Transport:** Cloudflare Durable Objects + WebSockets ($5/mo CF plan)
+- **Daemon → iOS (stdout):** Encrypted chunks pushed through WebSocket
+- **iOS → Daemon (stdin):** Each input signed with Ed25519 (private key in Secure Enclave, FaceID-gated), encrypted with per-session ephemeral X25519 keys (forward secrecy)
+- **Daemon verification:** Validates Ed25519 signature against Lasse's known public key before accepting any input
+- **Execution target:** Stdin piped exclusively into OpenCode sub-agent (NOT raw bash/shell)
+
+**Why OpenCode as the execution boundary (Gná's mandate):**
+PKI + Secure Enclave solves Identity (proving it's Lasse). It does NOT solve Execution safety (preventing dangerous commands). OpenCode acts as the intelligent sandbox:
+- Receives authenticated stdin as natural language instructions
+- Reasons about safety using its own AGENTS.md constraints
+- Refuses operations outside its allowed workspace/directory allowlist
+- The daemon never pipes raw stdin to a shell process
+
+**Security model:**
+- Non-extractable signing key (Secure Enclave hardware isolation)
+- Biometric binding (every signature requires FaceID)
+- Replay protection (monotonic sequence numbers)
+- Forward secrecy (ephemeral X25519 per session)
+- OpenCode as sanitization layer (LLM reasoning + AGENTS.md constraints)
+
+**Estimated effort:** 2-3 weeks (on top of Phase 3)
+
+---
+
+### Council Consensus (2026-03-13)
+- **Phase 2:** Async batch execution only. No stdin. No live streaming. ✅ Approved.
+- **Phase 3:** iOS app is confirmed as the next major milestone.
+- **Phase 4:** Interactive streams conditionally approved under PKI + OpenCode sandbox model.
