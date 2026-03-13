@@ -161,6 +161,26 @@
       color: var(--fg);
       width: auto;
       flex: 1;
+      display: inline-block; /* Ensure they are visible and respect flex */
+      margin: 0;
+    }
+    .action-btn:hover {
+      background: var(--border);
+    }
+    .action-confirm {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(158, 206, 106, 0.1);
+    }
+    .action-reject {
+      border-color: var(--error);
+      color: var(--error);
+      background: rgba(247, 118, 142, 0.1);
+    }
+    .task-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
     }
     .action-btn:hover {
       background: var(--border);
