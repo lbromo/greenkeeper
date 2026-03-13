@@ -52,13 +52,23 @@ export class IntentPoller {
 
       const { intents } = (await response.json()) as { intents: EncryptedPayload[] };
       
-      if (!intents || intents.length === 0) {
+      if (!intents || !Array.isArray(intents) || intents.length === 0) {
         return;
       }
 
       for (const encryptedPayload of intents) {
         try {
+          if (!encryptedPayload || !encryptedPayload.iv || !encryptedPayload.authTag || !encryptedPayload.ciphertext) {
+            console.warn('[IntentPoller] Skipping invalid intent payload:', encryptedPayload);
+            continue;
+          }
+
           const decryptedJson = decryptPayload(encryptedPayload, this.cryptoKey);
+          if (!decryptedJson) {
+            console.warn('[IntentPoller] Decrypted payload is empty');
+            continue;
+          }
+
           const intentPayload = JSON.parse(decryptedJson) as IntentPayload;
 
           console.log(`[IntentPoller] Received intent: ${intentPayload.intent}`);
