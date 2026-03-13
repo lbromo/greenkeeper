@@ -189,3 +189,24 @@ The test suite MUST verify:
 - **Vár** (1481244153017798708) — Test Specialist
 
 **Moderator:** Aria (1478861544816115935)
+
+---
+
+## Gróa — Headless E2E Testing Architecture (2026-03-13)
+
+### Decision: Function-to-function testing, no network simulation
+
+The repeated crypto envelope mismatches (3 occurrences across Phase 0 and Phase 2) share a root cause: two independent implementations of the same wire protocol with no shared source of truth and no round-trip test.
+
+**Architecture:**
+- No Miniflare, no Wrangler dev, no ports, no browser. The CF Worker is a dumb KV pipe — we test around it.
+- Extract PWA crypto from inline `<script>` in `dashboard/index.html` into `dashboard/crypto.js` (importable by Vitest).
+- Test file: `test/integration/intent-roundtrip.test.ts` — 9 test cases (Contract 43).
+- All tests run under `npm test` in < 5 seconds with zero network dependencies.
+
+**Wire format standardization:**
+- IV: 16 bytes, base64-encoded (matching existing outbound format)
+- Envelope: `{ iv, ciphertext, authTag, timestamp, nonce }` — all base64
+- Inner plaintext: `{ content: JSON.stringify(payload), timestamp }` — matching daemon's `decryptPayload` expectations
+
+**Lesson codified:** Every new encrypt→decrypt path gets a round-trip test BEFORE deployment. No exceptions.
