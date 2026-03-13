@@ -5,6 +5,8 @@ import { sendToRelay } from './relay-client.js';
 import { sanitizeStage1 } from './sanitizer/stage1-regex.js';
 import { sanitizeStage3 } from './sanitizer/stage3-final.js';
 import { distillTasks } from './workflows/task-distiller.js';
+import { IntentPoller } from './intent-poller.js';
+import { routeIntent } from './workflows/intent-router.js';
 
 // Load .env variables
 config();
@@ -12,6 +14,7 @@ config();
 const WATCH_DIR = process.env.WATCH_DIR;
 const CRYPTO_KEY = process.env.CRYPTO_KEY;
 const RELAY_URL = process.env.RELAY_URL;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 if (!WATCH_DIR || !CRYPTO_KEY || !RELAY_URL) {
   console.error('Missing WATCH_DIR, CRYPTO_KEY, or RELAY_URL in .env');
@@ -27,6 +30,16 @@ if (isPanicLocked()) {
   console.error('Please resolve the issue and manually remove ~/.greenkeeper/panic.lock');
   process.exit(1);
 }
+
+// Start Intent Poller
+const poller = new IntentPoller(CRYPTO_KEY, async (payload) => {
+  if (DISCORD_WEBHOOK_URL) {
+    await routeIntent(payload, DISCORD_WEBHOOK_URL);
+  } else {
+    console.warn('[Daemon] DISCORD_WEBHOOK_URL missing, cannot route intent.');
+  }
+});
+poller.start();
 
 watchInbox({
   inbox: WATCH_DIR,

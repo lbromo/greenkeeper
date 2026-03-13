@@ -41,10 +41,10 @@
 - [x] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
 
 ### Step 3: Intents & Execution (In Progress)
-- [ ] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intents` (KV consume-on-read).
-- [ ] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
-- [ ] **Task 5.1 (Part 3):** Daemon Poller (Jitter, try/catch decryption, nonce cache, timestamp checks).
-- [ ] **Task 5.2:** Implement `aliases.json` routing for deterministic execution.
+- [x] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intent` (KV consume-on-read).
+- [x] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
+- [x] **Task 5.1 (Part 3):** Daemon Poller (`src/intent-poller.ts`). Needs to `GET /intent` from Cloudflare every 15s, decrypt the payload using the `CRYPTO_KEY`, and log the received intent (confirm/reject/defer).
+- [x] **Task 5.2:** Intent Router (`src/workflows/intent-router.ts`). When an intent is confirmed, format the context and trigger a Discord Webhook to `#the-forge` (1481782767632126143) to invoke Sindri for execution.
 - [ ] **Task 5.3:** Implement OpenCode Runner (`shell: false`, regex strict args).
 
 ### Step 4: Task Distillation (Phase 2 Additions)
@@ -52,3 +52,71 @@
 - [x] **Task 6.2:** Define Zod schema \`DistilledTaskSchema\` following blood-brain barrier policy.
 - [x] **Task 6.3:** Wire task distiller into \`src/index.ts\` (orchestrator).
 - [x] **Task 6.4:** Update \`dashboard/index.html\` to render the distillation summary card.
+
+### Step 5: Outbound Alerting (ntfy.sh)
+
+**Goal:** Replace Discord webhook with E2EE-ready push notification system for out-of-band alerting.
+
+- [ ] **Task 4.4:** Implement Outbound Notification Module
+
+**Contract 44: Notification Module (`src/notifier.ts`)**
+
+**Requirements:**
+1. Read `NTFY_TOPIC` and `NTFY_ENABLED` from environment variables
+2. Validate topic entropy (minimum 32 characters) at module initialization
+3. If entropy check fails, log error and disable notifications
+4. Expose `notify(message: string): Promise<void>` function
+5. POST plaintext message to `https://ntfy.sh/{NTFY_TOPIC}` with headers:
+   - `Title: Greenkeeper`
+   - `Priority: 3`
+   - `Tags: seedling`
+6. Gracefully handle network errors (log, do not crash)
+7. Replace Discord webhook calls in `src/index.ts` and `src/intent-poller.ts` with `notify()` calls
+
+**Allowed Notification Formats (Structural Pings Only):**
+- ✅ "📬 3 new tasks distilled"
+- ✅ "✅ Task execution complete"
+- ✅ "🚨 Panic switch triggered"
+- ❌ "📬 Email from John Doe about Project X" (context leakage)
+
+**Acceptance Criteria:**
+- [ ] TC-44.1: POST to correct topic with required headers
+- [ ] TC-44.2: No payload data leakage (Blood-Brain Barrier enforcement)
+- [ ] TC-44.3: NTFY_ENABLED flag respected (no HTTP when false)
+- [ ] TC-44.4: Network error handling (non-blocking, logged)
+- [ ] TC-44.5: Topic entropy validation at startup (reject < 32 chars)
+
+**Test File:** `test/integration/notifier.test.ts`  
+**Implementation File:** `src/notifier.ts`
+
+**Testing Strategy:**
+- Use `vi.spyOn(global, 'fetch')` to mock HTTP requests
+- No production HTTP requests during `npm test`
+- Test topic: `test-greenkeeper-local-do-not-use`
+
+**Security Guardrails (Enforced by Gná):**
+1. **No Context Leakage:** Message must be structural only, no corporate data
+2. **Topic Secrecy:** 32-char minimum, CSPRNG-generated (e.g., `crypto.randomBytes(16).toString('hex')`)
+3. **No Action Links:** No URLs with tokens in notification body
+
+**Configuration:**
+Add to `.env.example`:
+```bash
+# Outbound Alerting (ntfy.sh)
+NTFY_ENABLED=true
+NTFY_TOPIC=your-32-char-random-hex-string-here
+```
+
+**Implementation Notes:**
+- Module must fail gracefully if `NTFY_TOPIC` is missing or weak
+- Notifications are fire-and-forget (no retry queue)
+- Error logs must not expose the topic name (use `[REDACTED]`)
+
+---
+
+## Phase 3: Future Roadmap (Not Yet Specified)
+
+### Potential Features
+- Native iOS App (Expo + APNs + Secure Enclave FaceID)
+- Web Push API Integration (Service Worker + VAPID)
+- Multi-tenant support (multiple corporate accounts)

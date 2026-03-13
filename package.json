@@ -9,6 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:relay-mock": "node test/mocks/relay-mock.js",
     "start": "npm run build && node dist/index.js",
     "build": "tsc"
   },

@@ -181,3 +181,47 @@ interface AliasMap {
 3. Task Distiller — Azure AI integration
 4. Inbound Intent Channel — reverse channel via CF Worker
 5. OpenCode Runner — sandboxed execution (last, highest risk)
+
+## 9. Outbound Alerting (ntfy.sh)
+
+Replaces the Discord webhook. The daemon sends structural pings (no corporate data) to a secret ntfy.sh topic. The ntfy iOS app displays the notification natively.
+
+### Architecture
+
+```
+Daemon (orchestrator.ts)
+  → notify("📬 3 new tasks distilled")
+  → POST https://ntfy.sh/{NTFY_TOPIC}
+     Headers: Title: Greenkeeper, Priority: 3, Tags: seedling
+     Body: plaintext structural ping
+  → ntfy.sh pushes to iOS via APNs
+  → User opens PWA dashboard to read actual content
+```
+
+### New File: `src/notifier.ts`
+
+```typescript
+interface NotifierConfig {
+  topic: string;      // NTFY_TOPIC from .env (32-char hex minimum)
+  enabled: boolean;   // NTFY_ENABLED from .env
+}
+
+export async function notify(message: string, config: NotifierConfig): Promise<void>;
+```
+
+### Configuration (.env)
+
+- `NTFY_TOPIC`: CSPRNG-generated 32-char hex string (`crypto.randomBytes(16).toString('hex')`)
+- `NTFY_ENABLED`: boolean toggle (default: false)
+
+### Constraints
+
+1. **No Context Leakage:** Alert body is strictly structural — counts, statuses. NEVER task content, names, subjects, or identifiers.
+   - ALLOWED: "📬 3 new tasks distilled", "✅ Intent confirmed"
+   - DENIED: "📬 Email from John Doe about Project X"
+2. **Topic Secrecy:** Minimum 32-char CSPRNG hex. Validated at daemon startup; abort if too short.
+3. **No Action Links:** No URLs with tokens in notification body. User opens PWA manually.
+
+### Why Not E2EE (Option 1b)
+
+The ntfy iOS app cannot decrypt AES-GCM payloads. Encrypted notifications display as gibberish on the lock screen. Since structural pings contain zero corporate data, plaintext is acceptable per the Blood-Brain Barrier policy. E2EE alerting deferred to Phase 3/4 (native iOS app).
