@@ -351,3 +351,48 @@ describe('Contract 28: Dashboard State Management', () => {
     expect(messagesEl.textContent).toBe('No messages yet');
   });
 });
+
+describe('Contract 30: Task Intent UI (Phase 2, Step 3)', () => {
+  let window, document;
+  
+  beforeEach(() => {
+    const env = createDashboardEnvironment();
+    window = env.window;
+    document = env.document;
+  });
+
+  it('TC-30.1: Distilled task cards contain Confirm (1) and Reject (2) buttons', () => {
+    const messagesEl = document.getElementById('messages');
+    const distEl = document.createElement('div');
+    distEl.className = 'distillation-summary';
+    
+    const taskCard = document.createElement('div');
+    taskCard.className = 'task-card';
+    
+    const actionsEl = document.createElement('div');
+    actionsEl.className = 'task-actions';
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'action-btn action-confirm';
+    confirmBtn.textContent = '1: Confirm';
+    confirmBtn.dataset.intent = '1';
+    
+    const rejectBtn = document.createElement('button');
+    rejectBtn.className = 'action-btn action-reject';
+    rejectBtn.textContent = '2: Reject';
+    rejectBtn.dataset.intent = '2';
+    
+    actionsEl.appendChild(confirmBtn);
+    actionsEl.appendChild(rejectBtn);
+    taskCard.appendChild(actionsEl);
+    distEl.appendChild(taskCard);
+    messagesEl.appendChild(distEl);
+    
+    const btns = messagesEl.querySelectorAll('.action-btn');
+    expect(btns.length).toBe(2);
+    expect(messagesEl.querySelector('.action-confirm').textContent).toContain('1');
+    expect(messagesEl.querySelector('.action-reject').textContent).toContain('2');
+    expect(messagesEl.querySelector('.action-confirm').dataset.intent).toBe('1');
+    expect(messagesEl.querySelector('.action-reject').dataset.intent).toBe('2');
+  });
+});
