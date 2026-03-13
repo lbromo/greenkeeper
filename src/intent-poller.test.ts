@@ -64,4 +64,26 @@ describe('IntentPoller', () => {
     expect(mockHandler).not.toHaveBeenCalled();
     expect(console.error).not.toHaveBeenCalled();
   });
+
+  it('should support legacy dashboard intent format', async () => {
+    const legacyPayload = {
+      taskId: 'task-123',
+      intent: 1, // Confirm
+      timestamp: new Date().toISOString(),
+      nonce: 'random-uuid'
+    };
+    const encrypted = encryptPayload(JSON.stringify(legacyPayload), cryptoKey);
+
+    (fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ intents: [encrypted] })
+    });
+
+    await (poller as any).poll();
+
+    expect(mockHandler).toHaveBeenCalledWith(expect.objectContaining({
+      intent: 'confirm',
+      context: { taskId: 'task-123' }
+    }));
+  });
 });

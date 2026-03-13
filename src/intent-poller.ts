@@ -69,7 +69,24 @@ export class IntentPoller {
             continue;
           }
 
-          const intentPayload = JSON.parse(decryptedJson) as IntentPayload;
+          const rawPayload = JSON.parse(decryptedJson);
+          let intentPayload: IntentPayload;
+
+          if (rawPayload && typeof rawPayload.intent === 'number') {
+            // Support dashboard format: { taskId, intent: 1|2|3 }
+            const intentMap: Record<number, IntentPayload['intent']> = {
+              1: 'confirm',
+              2: 'reject',
+              3: 'defer'
+            };
+            intentPayload = {
+              intent: intentMap[rawPayload.intent] || 'defer',
+              context: { taskId: rawPayload.taskId },
+              timestamp: rawPayload.timestamp || new Date().toISOString()
+            };
+          } else {
+            intentPayload = rawPayload as IntentPayload;
+          }
 
           console.log(`[IntentPoller] Received intent: ${intentPayload.intent}`);
           await this.onIntent(intentPayload);
