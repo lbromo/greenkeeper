@@ -210,3 +210,37 @@ The repeated crypto envelope mismatches (3 occurrences across Phase 0 and Phase 
 - Inner plaintext: `{ content: JSON.stringify(payload), timestamp }` — matching daemon's `decryptPayload` expectations
 
 **Lesson codified:** Every new encrypt→decrypt path gets a round-trip test BEFORE deployment. No exceptions.
+
+### Gná - Security Mandates for Phase 2 Alerting (ntfy.sh) (2026-03-13)
+The use of `ntfy.sh` as a public message bus for outbound alerting is approved under Option 1a (Plaintext Pings), provided it strictly adheres to the following threat mitigations:
+1. **No Context Leakage**: The alert string must be purely structural (e.g., "📬 3 new tasks distilled"). It must NEVER contain user names, project names, email subjects, or any sensitive context from the task payload.
+2. **Topic Secrecy (Anti-Enumeration)**: The `NTFY_TOPIC` environment variable must be a high-entropy string (e.g., a 32-character hex string or UUID). It must not be guessable. If discovered, an attacker will only see meaningless numerical pings.
+3. **No Action Links**: The notification payload must not contain any URLs with sensitive authentication tokens. The user must manually open their local PWA to authenticate and view the decrypted data.
+
+---
+
+## Gróa — ntfy.sh Outbound Alerting Architecture (2026-03-13)
+
+### Decision: Option 1a — Plaintext structural pings via ntfy.sh
+
+**Rationale:** The ntfy iOS app cannot decrypt AES-GCM payloads. Encrypting the notification would render it unreadable on the lock screen. Since the alert contains zero corporate data (just a count like "📬 3 new tasks"), plaintext is acceptable per the Blood-Brain Barrier policy.
+
+**Architecture:**
+- New file: `src/notifier.ts` (~20 lines)
+- Called from `orchestrator.ts` after successful distillation
+- Plain HTTP POST to `https://ntfy.sh/{NTFY_TOPIC}`
+- Headers: `Title: Greenkeeper`, `Priority: 3`, `Tags: seedling`
+- Body: structural ping only, e.g. "📬 3 new tasks distilled"
+
+**Configuration:**
+- `NTFY_TOPIC`: 32-char hex string from CSPRNG (`crypto.randomBytes(16).toString('hex')`)
+- `NTFY_ENABLED`: boolean toggle in `.env`
+- No other ntfy config needed
+
+**Constraints:**
+- Alert body MUST be structural (counts, statuses). NEVER include names, subjects, content, or identifiers from corporate data.
+- No URLs with tokens in the notification body.
+- The Glass (PWA) remains the sole interface for reading actual content and submitting intents.
+- ntfy is a "go check" signal, not a data channel.
+
+**Phase 3/4 note:** Native iOS app (Expo/React Native) with APNs, Secure Enclave key storage, and FaceID gating is the long-term replacement for both ntfy and the PWA.
