@@ -264,6 +264,73 @@
       document.getElementById('errorLog').style.display = 'none';
     }
 
+    async function encryptPayload(data, keyHex) {
+      const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+      const cryptoKey = await window.crypto.subtle.importKey(
+        'raw',
+        keyBuffer,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt']
+      );
+
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(JSON.stringify(data));
+
+      const encrypted = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        cryptoKey,
+        encoded
+      );
+
+      const combined = new Uint8Array(encrypted);
+      const ciphertext = combined.slice(0, -16);
+      const authTag = combined.slice(-16);
+
+      return {
+        iv: btoa(String.fromCharCode(...iv)),
+        ciphertext: btoa(String.fromCharCode(...ciphertext)),
+        authTag: btoa(String.fromCharCode(...authTag)),
+        timestamp: new Date().toISOString(),
+        nonce: window.crypto.randomUUID()
+      };
+    }
+
+    async function submitIntent(taskId, intentId) {
+      const relayUrl = document.getElementById('relayUrl').value.trim();
+      const key = sessionStorage.getItem('encryptionKey');
+      
+      if (!relayUrl || !key) return;
+
+      const base = new URL(relayUrl).origin;
+      const intentUrl = `${base}/intent`;
+
+      const payload = {
+        taskId,
+        intent: parseInt(intentId),
+        timestamp: new Date().toISOString(),
+        nonce: window.crypto.randomUUID()
+      };
+
+      try {
+        const encrypted = await encryptPayload(payload, key);
+        const response = await fetch(intentUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(encrypted)
+        });
+
+        if (response.ok) {
+          alert('Intent submitted successfully');
+        } else {
+          showError('Failed to submit intent: ' + response.statusText);
+        }
+      } catch (err) {
+        showError('Encryption or submission error: ' + err.message);
+      }
+    }
+
     async function decryptPayload(payload, keyHex) {
       try {
         const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
@@ -412,19 +479,19 @@
                 confirmBtn.className = 'action-btn action-confirm';
                 confirmBtn.textContent = '1: Confirm';
                 confirmBtn.dataset.intent = '1';
-                confirmBtn.onclick = () => console.log('Confirm task:', task.title);
+                confirmBtn.onclick = () => submitIntent(task.id || task.title, '1');
                 
                 const rejectBtn = document.createElement('button');
                 rejectBtn.className = 'action-btn action-reject';
                 rejectBtn.textContent = '2: Reject';
                 rejectBtn.dataset.intent = '2';
-                rejectBtn.onclick = () => console.log('Reject task:', task.title);
+                rejectBtn.onclick = () => submitIntent(task.id || task.title, '2');
 
                 const deferBtn = document.createElement('button');
                 deferBtn.className = 'action-btn action-defer';
                 deferBtn.textContent = '3: Defer';
                 deferBtn.dataset.intent = '3';
-                deferBtn.onclick = () => console.log('Defer task:', task.title);
+                deferBtn.onclick = () => submitIntent(task.id || task.title, '3');
 
                 actionsEl.appendChild(confirmBtn);
                 actionsEl.appendChild(rejectBtn);
