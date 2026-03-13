@@ -10,7 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:relay-mock": "node test/mocks/relay-mock.js",
+    "mock:inbox": "node scripts/mock-inbox.js",
     "start": "npm run build && node dist/index.js",
+    "dev": "npm run build && node --env-file=.env.dev dist/index.js",
     "build": "tsc"
   },
   "keywords": [],

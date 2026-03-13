@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { distillTasksOllama } from './ollama-provider.js';
 
 /**
  * Task Distiller Output Schema
@@ -18,9 +19,16 @@ export const DistilledTaskSchema = z.object({
 export type DistilledTaskSummary = z.infer<typeof DistilledTaskSchema>;
 
 /**
- * Distills actionable tasks from raw Teams messages using Azure AI Foundry (Anthropic).
+ * Distills actionable tasks from raw Teams messages using configured provider.
+ * Supports Azure Anthropic (default) or Ollama (dev).
  */
 export async function distillTasks(messages: any[]): Promise<DistilledTaskSummary> {
+  const provider = process.env.LLM_PROVIDER || 'anthropic';
+  
+  if (provider === 'ollama') {
+    return distillTasksOllama(messages);
+  }
+
   const endpoint = process.env.AZURE_ANTHROPIC_ENDPOINT || "https://appliedcontrol-resource.services.ai.azure.com/anthropic/v1/messages";
   const azureApiKey = process.env.AZURE_ANTHROPIC_API_KEY;
 

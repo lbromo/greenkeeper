@@ -29,7 +29,7 @@ console.log(`🌐 Target: ${RELAY_URL}`);
 
 if (isPanicLocked()) {
   console.error('🚨 PANIC LOCK ACTIVE! Daemon refuses to start.');
-  notify('🚨 Panic switch triggered').catch(() => {});
+  await notify('🚨 Panic switch triggered');
   process.exit(1);
 }
 
