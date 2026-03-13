@@ -1,5 +1,6 @@
 import { decryptPayload, EncryptedPayload } from './crypto.js';
 import { validateIntent } from './intent-handler.js';
+import { notify } from './notifier.js';
 
 const RELAY_INTENT_URL = process.env.RELAY_INTENT_URL || 'https://greenkeeper-relay.greenkeeper.workers.dev/intents';
 const POLL_INTERVAL_MS = process.env.NODE_ENV === 'test' ? 2000 : 15000;
@@ -89,6 +90,9 @@ export class IntentPoller {
 
           console.log(`[IntentPoller] Received intent: ${intentPayload.intent} for ${intentPayload.context.taskId}`);
           await this.onIntent(intentPayload);
+          
+          // TC-44.2: Structural ping only
+          await notify(`✅ Intent '${intentPayload.intent}' received`);
         } catch (err: any) {
           console.error('[IntentPoller] Failed to decrypt or process intent:', err.message);
         }

@@ -8,6 +8,8 @@ import { distillTasks } from './workflows/task-distiller.js';
 import { IntentPoller } from './intent-poller.js';
 import { routeIntent } from './workflows/intent-router.js';
 
+import { notify } from './notifier.js';
+
 // Load .env variables
 config();
 
@@ -27,7 +29,7 @@ console.log(`🌐 Target: ${RELAY_URL}`);
 
 if (isPanicLocked()) {
   console.error('🚨 PANIC LOCK ACTIVE! Daemon refuses to start.');
-  console.error('Please resolve the issue and manually remove ~/.greenkeeper/panic.lock');
+  notify('🚨 Panic switch triggered').catch(() => {});
   process.exit(1);
 }
 
@@ -39,6 +41,7 @@ const poller = new IntentPoller(CRYPTO_KEY, async (payload) => {
     console.warn('[Daemon] DISCORD_WEBHOOK_URL missing, cannot route intent.');
   }
 });
+
 poller.start();
 
 watchInbox({
@@ -91,6 +94,9 @@ watchInbox({
       if (result.success && result.key) {
         console.log(`✅ Relayed successfully!`);
         console.log(`🔗 Retrieve via: ${RELAY_URL}?key=${result.key}`);
+        
+        const count = parsed.messages?.length || 0;
+        await notify(`📬 ${count} new tasks distilled`);
       } else {
         console.error(`❌ Relay failed:`, result.error);
       }
