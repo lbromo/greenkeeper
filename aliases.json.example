@@ -1,0 +1,12 @@
+{
+  "1": {
+    "command": ["/usr/bin/echo", "Success!"],
+    "timeout": 300000,
+    "description": "Simple echo for testing"
+  },
+  "2": {
+    "command": ["/usr/bin/node", "scripts/approve.ts"],
+    "timeout": 300000,
+    "description": "Approve task script"
+  }
+}
