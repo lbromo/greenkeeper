@@ -32,7 +32,7 @@
 - [x] **Task 4.3:** Hex key input support (matches .env CRYPTO_KEY format).
 - [x] **Task 4.4:** Remove stale URL caching from sessionStorage.
 - [x] **Task 4.5:** Pretty-render decrypted messages[] as individual cards (sender, timestamp, preview).
-- [ ] **Task 4.6:** Implement Vitest + happy-dom test suite for dashboard contracts (TC-22 to TC-28).
+- [x] **Task 4.6:** Implement Vitest + happy-dom test suite for dashboard contracts (TC-22 to TC-28).
 
 ### Step 2: Wire Sanitizer into Orchestrator
 - [x] **Task 2.1:** Implement sanitizer/stage1-regex.ts (Deterministic blocklist).
