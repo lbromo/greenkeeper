@@ -415,19 +415,20 @@
                 confirmBtn.className = 'action-btn action-confirm';
                 confirmBtn.textContent = '1: Confirm';
                 confirmBtn.dataset.intent = '1';
-                confirmBtn.onclick = () => submitIntent(task.id || task.title, '1');
+                const safeTaskId = (task.id || task.title || 'task').replace(/[^a-zA-Z0-9-_]/g, '_');
+                confirmBtn.onclick = () => submitIntent(safeTaskId, '1');
                 
                 const rejectBtn = document.createElement('button');
                 rejectBtn.className = 'action-btn action-reject';
                 rejectBtn.textContent = '2: Reject';
                 rejectBtn.dataset.intent = '2';
-                rejectBtn.onclick = () => submitIntent(task.id || task.title, '2');
+                rejectBtn.onclick = () => submitIntent(safeTaskId, '2');
 
                 const deferBtn = document.createElement('button');
                 deferBtn.className = 'action-btn action-defer';
                 deferBtn.textContent = '3: Defer';
                 deferBtn.dataset.intent = '3';
-                deferBtn.onclick = () => submitIntent(task.id || task.title, '3');
+                deferBtn.onclick = () => submitIntent(safeTaskId, '3');
 
                 actionsEl.appendChild(confirmBtn);
                 actionsEl.appendChild(rejectBtn);
