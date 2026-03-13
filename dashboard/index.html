@@ -94,6 +94,58 @@
       font-family: monospace;
       white-space: pre-wrap;
     }
+    .distillation-summary {
+      background: rgba(122, 162, 247, 0.1);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .distillation-summary h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.1rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+    }
+    .distillation-summary .summary-text {
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+    .task-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .task-card:last-child {
+      margin-bottom: 0;
+    }
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.4rem;
+    }
+    .task-title {
+      font-weight: bold;
+      color: var(--fg);
+    }
+    .urgency-pill {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 10px;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+    .urgency-high { background: var(--error); color: var(--bg); }
+    .urgency-medium { background: #e0af68; color: var(--bg); }
+    .urgency-low { background: var(--success); color: var(--bg); }
+    .task-desc {
+      font-size: 0.85rem;
+      color: #9aa5ce;
+    }
     .error-log {
       color: var(--error);
       background: rgba(247, 118, 142, 0.1);
@@ -255,6 +307,57 @@
           const decrypted = await decryptPayload(encryptedBlob, key);
           const inner = JSON.parse(decrypted.content);
           const messages = inner.messages || [];
+          const distillation = inner.distillation;
+
+          // Render Distillation block if it exists
+          if (distillation) {
+            const distEl = document.createElement('div');
+            distEl.className = 'distillation-summary';
+            
+            const distTitle = document.createElement('h2');
+            distTitle.textContent = 'Distilled Summary';
+            distEl.appendChild(distTitle);
+
+            if (distillation.summary) {
+              const summaryText = document.createElement('div');
+              summaryText.className = 'summary-text';
+              summaryText.textContent = distillation.summary;
+              distEl.appendChild(summaryText);
+            }
+
+            if (distillation.tasks && distillation.tasks.length > 0) {
+              for (const task of distillation.tasks) {
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card';
+
+                const taskHeader = document.createElement('div');
+                taskHeader.className = 'task-header';
+
+                const taskTitle = document.createElement('span');
+                taskTitle.className = 'task-title';
+                taskTitle.textContent = task.title || 'Untitled Task';
+                taskHeader.appendChild(taskTitle);
+
+                if (task.urgency) {
+                  const urgencyPill = document.createElement('span');
+                  urgencyPill.className = 'urgency-pill urgency-' + task.urgency.toLowerCase();
+                  urgencyPill.textContent = task.urgency;
+                  taskHeader.appendChild(urgencyPill);
+                }
+                taskCard.appendChild(taskHeader);
+
+                if (task.description) {
+                  const taskDesc = document.createElement('div');
+                  taskDesc.className = 'task-desc';
+                  taskDesc.textContent = task.description;
+                  taskCard.appendChild(taskDesc);
+                }
+
+                distEl.appendChild(taskCard);
+              }
+            }
+            messagesEl.appendChild(distEl);
+          }
           
           // Status line
           const statusEl = document.createElement('div');
