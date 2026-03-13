@@ -251,6 +251,7 @@
     </div>
   </div>
 
+  <script src="crypto.js"></script>
   <script>
     const TIMEOUT_MS = 10000; // 10 seconds
 
@@ -262,39 +263,6 @@
 
     function hideError() {
       document.getElementById('errorLog').style.display = 'none';
-    }
-
-    async function encryptPayload(data, keyHex) {
-      const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-      const cryptoKey = await window.crypto.subtle.importKey(
-        'raw',
-        keyBuffer,
-        { name: 'AES-GCM' },
-        false,
-        ['encrypt']
-      );
-
-      const iv = window.crypto.getRandomValues(new Uint8Array(12));
-      const encoder = new TextEncoder();
-      const encoded = encoder.encode(JSON.stringify(data));
-
-      const encrypted = await window.crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
-        cryptoKey,
-        encoded
-      );
-
-      const combined = new Uint8Array(encrypted);
-      const ciphertext = combined.slice(0, -16);
-      const authTag = combined.slice(-16);
-
-      return {
-        iv: btoa(String.fromCharCode(...iv)),
-        ciphertext: btoa(String.fromCharCode(...ciphertext)),
-        authTag: btoa(String.fromCharCode(...authTag)),
-        timestamp: new Date().toISOString(),
-        nonce: window.crypto.randomUUID()
-      };
     }
 
     async function submitIntent(taskId, intentId) {
@@ -328,38 +296,6 @@
         }
       } catch (err) {
         showError('Encryption or submission error: ' + err.message);
-      }
-    }
-
-    async function decryptPayload(payload, keyHex) {
-      try {
-        const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-        const cryptoKey = await window.crypto.subtle.importKey(
-          'raw',
-          keyBuffer,
-          { name: 'AES-GCM' },
-          false,
-          ['decrypt']
-        );
-
-        const ivBuffer = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-        const ciphertextBuffer = Uint8Array.from(atob(payload.ciphertext), c => c.charCodeAt(0));
-        const authTagBuffer = Uint8Array.from(atob(payload.authTag), c => c.charCodeAt(0));
-
-        const combinedBuffer = new Uint8Array(ciphertextBuffer.length + authTagBuffer.length);
-        combinedBuffer.set(ciphertextBuffer);
-        combinedBuffer.set(authTagBuffer, ciphertextBuffer.length);
-
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv: ivBuffer },
-          cryptoKey,
-          combinedBuffer
-        );
-
-        const decoder = new TextDecoder();
-        return JSON.parse(decoder.decode(decryptedBuffer));
-      } catch (e) {
-        throw new Error('Decryption failed. Check key or payload format.');
       }
     }
 

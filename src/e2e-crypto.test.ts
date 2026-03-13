@@ -1,13 +1,54 @@
 import { describe, it, expect } from 'vitest';
-import { encryptPayload } from './crypto.js';
+import { encryptPayload, decryptPayload } from './crypto.js';
 import { webcrypto } from 'crypto';
 
-// Polyfill atob for the test environment
+// Polyfill atob/btoa for the test environment
 const atob = (b64: string) => Buffer.from(b64, 'base64').toString('binary');
+const btoa = (bin: string) => Buffer.from(bin, 'binary').toString('base64');
 
-// The exact function from dashboard/index.html (with webcrypto swapped in)
-async function browserDecrypt(payload: any, keyBase64: string) {
-  const keyBuffer = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+// The exact functions from dashboard/crypto.js (with webcrypto swapped in)
+async function browserEncrypt(data: any, keyHex: string) {
+  const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+  const cryptoKey = await webcrypto.subtle.importKey(
+    'raw',
+    keyBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+
+  const iv = webcrypto.getRandomValues(new Uint8Array(16)); // 16-byte IV
+  const timestamp = new Date().toISOString();
+  
+  const envelope = JSON.stringify({
+    content: JSON.stringify(data),
+    timestamp: timestamp
+  });
+  
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(envelope);
+
+  const encrypted = await webcrypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    encoded
+  );
+
+  const combined = new Uint8Array(encrypted);
+  const ciphertext = combined.slice(0, -16);
+  const authTag = combined.slice(-16);
+
+  return {
+    iv: btoa(String.fromCharCode(...iv)),
+    ciphertext: btoa(String.fromCharCode(...ciphertext)),
+    authTag: btoa(String.fromCharCode(...authTag)),
+    timestamp,
+    nonce: 'test-nonce'
+  };
+}
+
+async function browserDecrypt(payload: any, keyHex: string) {
+  const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
   const cryptoKey = await webcrypto.subtle.importKey(
     'raw',
     keyBuffer,
@@ -35,29 +76,27 @@ async function browserDecrypt(payload: any, keyBase64: string) {
 }
 
 describe('End-to-End Crypto', () => {
-  it('should encrypt via Node and decrypt via Web Crypto using Base64 key', async () => {
-    const validBase64Key = require('crypto').randomBytes(32).toString('base64');
+  it('should encrypt via Node and decrypt via Web Crypto', async () => {
+    const hexKey = 'e8933684ee7166bae1ae66dde587ab667a210dd1434f396560bf6c7098237c5c';
     const originalPayload = { message: 'Hello from Node!', secret: 42 };
-    const encrypted = encryptPayload(JSON.stringify(originalPayload), validBase64Key);
-    const decryptedWrapper = await browserDecrypt(encrypted, validBase64Key);
-    const decryptedPayload = JSON.parse(decryptedWrapper.content);
-    expect(decryptedPayload).toEqual(originalPayload);
+    
+    const encrypted = encryptPayload(JSON.stringify(originalPayload), hexKey);
+    const decryptedWrapper = await browserDecrypt(encrypted, hexKey);
+    
+    expect(JSON.parse(decryptedWrapper.content)).toEqual(originalPayload);
   });
 
-  it('should encrypt via Node (hex key) and decrypt via Web Crypto (base64 of same bytes)', async () => {
-    // This is the ACTUAL key from the .env file
+  it('should encrypt via Web Crypto (PWA) and decrypt via Node (daemon)', async () => {
     const hexKey = 'e8933684ee7166bae1ae66dde587ab667a210dd1434f396560bf6c7098237c5c';
-    const originalPayload = { message: 'Real integration test!', secret: 99 };
+    const originalPayload = { taskId: 'task-123', intent: 1 };
 
-    // Node daemon encrypts with the hex key
-    const encrypted = encryptPayload(JSON.stringify(originalPayload), hexKey);
+    // 1. Encrypt via Web Crypto (PWA logic)
+    const encrypted = await browserEncrypt(originalPayload, hexKey);
 
-    // Browser needs the SAME 32 bytes, but as base64 (since atob decodes base64)
-    const base64Key = Buffer.from(hexKey, 'hex').toString('base64');
-    console.log('Base64 key for browser:', base64Key);
+    // 2. Decrypt via Node (daemon logic)
+    const decryptedPlaintext = decryptPayload(encrypted as any, hexKey);
 
-    const decryptedWrapper = await browserDecrypt(encrypted, base64Key);
-    const decryptedPayload = JSON.parse(decryptedWrapper.content);
-    expect(decryptedPayload).toEqual(originalPayload);
+    // 3. Verify
+    expect(JSON.parse(decryptedPlaintext)).toEqual(originalPayload);
   });
 });
