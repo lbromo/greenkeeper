@@ -41,10 +41,10 @@
 - [x] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
 
 ### Step 3: Intents & Execution (In Progress)
-- [ ] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intents` (KV consume-on-read).
-- [ ] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
-- [ ] **Task 5.1 (Part 3):** Daemon Poller (Jitter, try/catch decryption, nonce cache, timestamp checks).
-- [ ] **Task 5.2:** Implement `aliases.json` routing for deterministic execution.
+- [x] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intent` (KV consume-on-read).
+- [x] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
+- [x] **Task 5.1 (Part 3):** Daemon Poller (`src/intent-poller.ts`). Needs to `GET /intent` from Cloudflare every 15s, decrypt the payload using the `CRYPTO_KEY`, and log the received intent (confirm/reject/defer).
+- [x] **Task 5.2:** Intent Router (`src/workflows/intent-router.ts`). When an intent is confirmed, format the context and trigger a Discord Webhook to `#the-forge` (1481782767632126143) to invoke Sindri for execution.
 - [ ] **Task 5.3:** Implement OpenCode Runner (`shell: false`, regex strict args).
 
 ### Step 4: Task Distillation (Phase 2 Additions)
