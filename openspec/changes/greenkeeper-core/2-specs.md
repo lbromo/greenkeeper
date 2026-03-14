@@ -140,3 +140,66 @@ THEN: MUST POST plaintext to https://ntfy.sh/{NTFY_TOPIC}
   AND: MUST validate NTFY_TOPIC >= 32 chars at startup
   AND: MUST handle network errors gracefully (no crash)
 ```
+
+## Section 9: Phase 3 — Native iOS App Security Specifications
+
+### 9.1 Apple Developer Account & APNs Certificate Handling
+- The iOS app SHALL require an active Apple Developer account ($99/yr) for APNs certificate generation.
+- APNs certificates SHALL be stored in encrypted `.p12` files on the Mac mini, protected by filesystem permissions (`0600`).
+- Certificate renewal SHALL be a manual process performed by Lasse via Apple Developer portal.
+- The Cloudflare Worker SHALL NOT store APNs certificates; they SHALL remain exclusively on the Mac mini.
+
+### 9.2 Secure Enclave Integration (Key Storage)
+- The iOS app SHALL generate an Ed25519 keypair using iOS Secure Enclave (if available) or Keychain with `kSecAttrAccessControl`.
+- The private key SHALL be marked `kSecAttrIsPermanent` and `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
+- Access to the private key SHALL require biometric authentication (`LAAccessControl.biometryCurrentSet`).
+- The app SHALL NEVER export the private key in plaintext; signing operations SHALL be performed within the Secure Enclave.
+- For development and simulator environments, the app MAY fall back to software keypair generation with a clear warning in logs.
+
+### 9.3 Threat Model: On-Device Signing
+- **Compromised iOS App:** An attacker with code execution on the iOS app can sign arbitrary payloads, but cannot extract the private key.
+- **Compromised Cloudflare Worker:** The worker cannot forge signatures without the private key.
+- **Network Interception:** APNs payloads are encrypted end-to-end (AES-256-GCM). Apple cannot read content.
+- **Biometric Bypass:** If FaceID/TouchID is disabled or not configured, the app SHALL refuse to sign payloads.
+- **Device Theft:** A stolen unlocked phone can sign payloads until the user revokes the public key on the daemon.
+
+### 9.4 Telemetry & EDR Constraints
+- The iOS app SHALL NOT establish persistent outbound WebSocket connections to the Cloudflare Worker.
+- Push notification polling SHALL be limited to APNs frequency (Apple-controlled).
+- The daemon's polling to fetch intents SHALL continue using existing jittered intervals (6–14 minutes).
+- Network traffic patterns SHALL mimic standard iOS app behavior (bursts of HTTPS requests following APNs wake-ups).
+- The app SHALL NOT implement background location, microphone, or camera access.
+
+### 9.5 Key Rotation & Revocation Policy
+- Public keys SHALL be provisioned via QR code scanning during initial setup.
+- The daemon SHALL maintain an allowlist of device public keys in `~/.greenkeeper/device-keys.json`.
+- Key rotation SHALL be initiated manually by the user via iOS app Settings → "Rotate Signing Key".
+- Upon rotation, the old public key SHALL be marked `revoked: true` and all new signatures from it SHALL be rejected.
+- The daemon SHALL log key rotation events and emit a `SystemSignal` to notify the user.
+
+### 9.6 Must-Have Mitigations
+- **Replay Protection:** Each signed payload SHALL include a monotonic sequence number (`nonce`) and ISO 8601 timestamp.
+- **Timestamp Validation:** The daemon SHALL reject payloads with timestamps > 5 minutes old.
+- **Nonce Cache:** The daemon SHALL maintain an LRU cache of recently seen nonces (max 1000 entries) and reject duplicates.
+- **Input Validation:** Even signed `stdin` payloads SHALL be treated as untrusted data before piping to OpenCode runner.
+- **Rate Limiting:** The daemon SHALL limit signature verification attempts to 10 per minute per device public key.
+
+### 9.7 APNs Payload Security
+- Payloads SHALL be encrypted using the same AES-256-GCM envelope as Phase 2.
+- Structural pings (e.g., "📬 3 new tasks") MAY be sent unencrypted but SHALL NOT contain corporate identifiers.
+- The APNs `aps` dictionary SHALL use `content-available: 1` for background fetch.
+- The `alert` body SHALL be either a structural ping or `"[Encrypted]"` for encrypted payloads.
+- Custom data keys (`greenkeeper_payload`) SHALL contain base64-encoded encrypted blobs.
+
+### 9.8 Fallback to ntfy.sh
+- If APNs certificate provisioning fails or Apple rejects the app, the system SHALL fall back to `ntfy.sh` with high-entropy topic.
+- The fallback SHALL use the same structural ping format defined in Contract 44.
+- The iOS app SHALL support both APNs and `ntfy.sh` via a configuration toggle.
+- The daemon SHALL be configured with both APNs cert path and `NTFY_TOPIC` env var.
+
+### 9.9 Privacy & Data Retention
+- The iOS app SHALL NOT collect analytics, crash reports, or telemetry beyond operational logs.
+- Locally stored notification history SHALL be encrypted with the same AES key and purged after 30 days.
+- The app SHALL NOT transmit device identifiers (UDID, IDFA) to the Cloudflare Worker.
+- Public keys SHALL be randomly generated per-installation and SHALL NOT be derived from device identifiers.
+
