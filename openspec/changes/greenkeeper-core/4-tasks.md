@@ -40,14 +40,18 @@
 - [x] **Task 2.2:** Wire full Sanitizer pipeline (Stage 1->3) into orchestrator.ts (scrub BEFORE encryption).
 - [x] **Task 2.3:** Implement sanitizer/stage2-llm.ts (Azure AI Foundry) — deferred until corporate Mac.
 
-### Step 3: Intents & Execution (In Progress)
+### Step 3: Intents & Execution (COMPLETE)
 - [x] **Task 5.1 (Part 1):** CF Worker `POST /intent` & `GET /intent` (KV consume-on-read).
 - [x] **Task 5.1 (Part 2):** PWA Intent Emission (Encrypt JSON + POST to CF Worker).
 - [x] **Task 5.1 (Part 3):** Daemon Poller (`src/intent-poller.ts`). Needs to `GET /intent` from Cloudflare every 15s, decrypt the payload using the `CRYPTO_KEY`, and log the received intent (confirm/reject/defer).
 - [x] **Task 5.2:** Intent Router (`src/workflows/intent-router.ts`). When an intent is confirmed, format the context and trigger a Discord Webhook to `#the-forge` (1481782767632126143) to invoke Sindri for execution.
-- [ ] **Task 5.3:** Implement OpenCode Runner (`shell: false`, regex strict args).
+- [x] **Task 5.3:** Implement Async OpenCode Runner (`shell: false`, strict taskId regex, `aliases.json` routing, encrypted result blob).
+
+**Contract 45 Status:** [x] Complete — integer intent → `aliases.json` → `spawn(..., {shell:false})` → encrypted result upload
 
 ### Step 4: Task Distillation (Phase 2 Additions)
+
+**Note:** Task 6.1 was originally specified for Azure AI Foundry, but an on-device local LLM (Ollama with `llama3.2:1b`) was implemented instead. This improves data sovereignty — no external API calls during distillation. Set `LLM_PROVIDER=ollama` in `.env.dev` to enable. This unplanned addition improves the blood-brain barrier posture.
 - [x] **Task 6.1:** Implement \`src/workflows/task-distiller.ts\` to connect to Azure Anthropic.
 - [x] **Task 6.2:** Define Zod schema \`DistilledTaskSchema\` following blood-brain barrier policy.
 - [x] **Task 6.3:** Wire task distiller into \`src/index.ts\` (orchestrator).
