@@ -124,3 +124,71 @@ NTFY_TOPIC=your-32-char-random-hex-string-here
 - Native iOS App (Expo + APNs + Secure Enclave FaceID)
 - Web Push API Integration (Service Worker + VAPID)
 - Multi-tenant support (multiple corporate accounts)
+
+### Step 6: Phase 3 — Native iOS Companion App (Test Contracts)
+
+**Goal:** Define Phase 3 test contracts for Secure Enclave key handling, push receipt, biometric gating, and deep-link behaviour. Phase 4 PKI placeholders included.
+
+**TC-300: Secure Enclave Keypair Generation (Ed25519)**
+GIVEN: Freshly installed app on device or simulator
+WHEN: App generates keypair
+THEN: Private key MUST be non-exportable (simulator uses fallback file)
+  AND: Public key MUST be exportable and uploaded to daemon or CF Worker via provisioning flow
+
+**TC-301: Public Key Provisioning / QR Flow**
+GIVEN: Device displays QR containing public key + metadata
+WHEN: Mac scans QR or user pastes public key
+THEN: Daemon MUST store public key for signature verification
+  AND: Provisioning SHOULD require one-time confirmation
+
+**TC-302: APNs Push Receipt (Structural Ping)**
+GIVEN: CF Worker sends structural ping to APNs (or ntfy fallback)
+WHEN: App receives push
+THEN: App MUST display structural ping text (no sensitive data)
+  AND: Tapping the push MUST deep-link into Glass PWA
+
+**TC-303: Decrypt Encrypted Push Payload (AES-GCM)**
+GIVEN: CF Worker sends encrypted payload to APNs
+  AND: App has private key / shared secret provisioned
+WHEN: App receives push and decrypts
+THEN: Decryption MUST succeed and the decrypted envelope MUST validate schema
+  AND: If decryption fails, app MUST show generic alert ("Open Glass")
+
+**TC-304: FaceID Gating Before Key Use**
+GIVEN: App locked with biometric policy
+WHEN: App attempts to use private key for decryption or signing
+THEN: FaceID prompt MUST appear
+  AND: Private key operation MUST be denied on FaceID failure
+
+**TC-305: Deep-link Behavior**
+GIVEN: App receives structural ping and user taps it
+WHEN: App opens Glass via deep link
+THEN: The deep link MUST include opaque correlation id (no keys or payloads in URL)
+  AND: Glass fetch MUST Authenticate/verify using normal relay flow (no key in URL)
+
+**TC-306: Device Public Key Rotation Handling**
+GIVEN: Device rotates its keypair (user-initiated)
+WHEN: App uploads new public key and invalidates old key
+THEN: Daemon MUST accept new key and reject signatures from old key
+  AND: Rotation MUST be recorded with timestamp and nonce
+
+**TC-307: Replay Protection (Phase 4 placeholder)**
+GIVEN: Signed payloads from app include nonce + timestamp
+WHEN: Daemon receives signed payload
+THEN: Daemon MUST reject replays outside allowed window and duplicate nonces
+
+**TC-308: Signature Verification on Daemon (Phase 4 placeholder)**
+GIVEN: Signed input from device (Ed25519)
+WHEN: Daemon verifies signature against stored public key
+THEN: Valid signatures pass; invalid signatures are rejected and logged
+
+**TC-309: Telemetry / EDR Constraint Tests**
+GIVEN: App-to-relay communication patterns (push only; no continuous outbound socket)
+WHEN: App is exercised in normal use
+THEN: Must confirm that no periodic outbound persistent socket is established by daemon
+  AND: Any polling cadence used by daemon (for Phase 2) must be <= 1 request / 5s and randomized jitter to avoid C2 heuristics
+
+---
+
+**Notes:**
+- These test cases are skeletons to be refined once Gróa's Phase 3 design and Gná's security spec are finalized on disk. They will be assigned TC IDs (300-309) and expanded into automated Vitest cases where feasible (simulator fallback for Secure Enclave operations).
