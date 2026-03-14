@@ -62,18 +62,25 @@ async function handleIntentsGet(request: Request, env: Env): Promise<Response> {
     const intents = [];
 
     for (const keyObj of list.keys) {
-      const value = await env.KV.get(keyObj.name);
-      if (value) {
-        intents.push(JSON.parse(value));
-        await env.KV.delete(keyObj.name);
+      try {
+        const value = await env.KV.get(keyObj.name);
+        if (value) {
+          intents.push(JSON.parse(value));
+          await env.KV.delete(keyObj.name);
+        }
+      } catch (innerError) {
+        console.error(`Error processing intent key ${keyObj.name}:`, innerError);
+        // Best effort: try to delete the malformed key to prevent infinite loop
+        await env.KV.delete(keyObj.name).catch(() => {});
       }
     }
 
     return new Response(JSON.stringify({ intents }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to fetch intents' }), {
+  } catch (error: any) {
+    console.error('Failed to fetch intents:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch intents', details: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });

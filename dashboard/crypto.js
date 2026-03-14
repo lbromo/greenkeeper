@@ -1,5 +1,32 @@
-async function encryptPayload(data, keyHex) {
-  const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+// Robust Base64 to Uint8Array helper
+function fromB64(base64) {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Robust Uint8Array to Base64 helper
+function toB64(bytes) {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function encryptPayload(data, keyStr) {
+  // Handles both Hex (64 chars) and Base64
+  let keyBuffer;
+  if (keyStr.length === 64 && /^[0-9a-fA-F]+$/.test(keyStr)) {
+    keyBuffer = new Uint8Array(keyStr.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+  } else {
+    keyBuffer = fromB64(keyStr);
+  }
+
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyBuffer,
@@ -29,25 +56,25 @@ async function encryptPayload(data, keyHex) {
   const ciphertext = combined.slice(0, -16);
   const authTag = combined.slice(-16);
 
-  const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-
   return {
-    iv: terroristSafeBtoa(iv),
-    ciphertext: terroristSafeBtoa(ciphertext),
-    authTag: terroristSafeBtoa(authTag),
+    iv: toB64(iv),
+    ciphertext: toB64(ciphertext),
+    authTag: toB64(authTag),
     timestamp,
     nonce: crypto.randomUUID()
   };
 }
 
-function terroristSafeBtoa(buf) {
-  const binary = Array.from(new Uint8Array(buf)).map(b => String.fromCharCode(b)).join('');
-  return btoa(binary);
-}
-
-async function decryptPayload(payload, keyHex) {
+async function decryptPayload(payload, keyStr) {
   try {
-    const keyBuffer = new Uint8Array(keyHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    // 1. Convert Key (Handles both Hex and Base64)
+    let keyBuffer;
+    if (keyStr.length === 64 && /^[0-9a-fA-F]+$/.test(keyStr)) {
+      keyBuffer = new Uint8Array(keyStr.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    } else {
+      keyBuffer = fromB64(keyStr);
+    }
+
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       keyBuffer,
@@ -56,18 +83,19 @@ async function decryptPayload(payload, keyHex) {
       ['decrypt']
     );
 
-    const fromB64 = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
-    
+    // 2. Decode Base64 safely
     const ivBuffer = fromB64(payload.iv);
     const ciphertextBuffer = fromB64(payload.ciphertext);
     const authTagBuffer = fromB64(payload.authTag);
 
+    // 3. Concatenate [ciphertext][authTag] for SubtleCrypto
     const combinedBuffer = new Uint8Array(ciphertextBuffer.length + authTagBuffer.length);
     combinedBuffer.set(ciphertextBuffer);
     combinedBuffer.set(authTagBuffer, ciphertextBuffer.length);
 
+    // 4. Decrypt
     const decryptedBuffer = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: ivBuffer },
+      { name: 'AES-GCM', iv: ivBuffer, tagLength: 128 },
       cryptoKey,
       combinedBuffer
     );
@@ -75,6 +103,7 @@ async function decryptPayload(payload, keyHex) {
     const decoder = new TextDecoder();
     return JSON.parse(decoder.decode(decryptedBuffer));
   } catch (e) {
+    console.error('Decryption error details:', e);
     throw new Error('Decryption failed. Check key or payload format.');
   }
 }

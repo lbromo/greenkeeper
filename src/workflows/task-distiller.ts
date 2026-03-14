@@ -18,9 +18,15 @@ export const DistilledTaskSchema = z.object({
 export type DistilledTaskSummary = z.infer<typeof DistilledTaskSchema>;
 
 /**
- * Distills actionable tasks from raw Teams messages using Azure AI Foundry (Anthropic).
+ * Distills actionable tasks from raw Teams messages using Azure AI Foundry (Anthropic) or local Ollama.
  */
 export async function distillTasks(messages: any[]): Promise<DistilledTaskSummary> {
+  const provider = process.env.LLM_PROVIDER || 'azure';
+  
+  if (provider === 'ollama') {
+    return distillWithOllama(messages);
+  }
+
   const endpoint = process.env.AZURE_ANTHROPIC_ENDPOINT || "https://appliedcontrol-resource.services.ai.azure.com/anthropic/v1/messages";
   const azureApiKey = process.env.AZURE_ANTHROPIC_API_KEY;
 
@@ -95,10 +101,78 @@ ${JSON.stringify(messages, null, 2)}
     const validated = DistilledTaskSchema.parse(parsed);
     return validated;
   } catch (error: any) {
-    console.error('❌ Task Distillation failed:', error.message);
+    console.error('❌ Task Distillation failed (Azure):', error.message);
     return {
       tasks: [],
       summary: `Failed to distill tasks: ${error.message}`
+    };
+  }
+}
+
+async function distillWithOllama(messages: any[]): Promise<DistilledTaskSummary> {
+  const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
+  const model = process.env.OLLAMA_MODEL || 'llama3.2:1b';
+  const endpoint = `${host}/api/generate`;
+
+  const prompt = `
+You are the Task Distiller for Project Greenkeeper.
+Extract actionable tasks from these Teams messages.
+
+CRITICAL POLICY: Blood-Brain Barrier
+- ✅ Extract full text summaries, task names, status updates.
+- ❌ NO source code, credentials, API keys, or tokens.
+
+Output strictly in JSON format matching this structure:
+{
+  "tasks": [
+    {
+      "title": "Short title",
+      "description": "Sanitized description",
+      "urgency": "low|normal|high",
+      "actionable": true|false,
+      "source_message_id": "id"
+    }
+  ],
+  "summary": "Brief overall summary"
+}
+
+Messages:
+${JSON.stringify(messages, null, 2)}
+
+Response (JSON only):`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        prompt,
+        format: 'json',
+        stream: false
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+    }
+
+    const result: any = await response.json();
+    const content = result.response;
+    
+    if (!content) {
+      throw new Error('Empty response from Ollama');
+    }
+
+    const parsed = JSON.parse(content);
+    const validated = DistilledTaskSchema.parse(parsed);
+    return validated;
+  } catch (error: any) {
+    console.error('❌ Task Distillation failed (Ollama):', error.message);
+    return {
+      tasks: [],
+      summary: `Failed to distill tasks (Ollama): ${error.message}`
     };
   }
 }
