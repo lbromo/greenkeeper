@@ -242,3 +242,121 @@ The ntfy iOS app cannot decrypt AES-GCM payloads. Encrypted notifications displa
 - Stdin piped exclusively into OpenCode sub-agent (never raw shell)
 - OpenCode acts as intelligent sandbox via AGENTS.md constraints
 - Monotonic sequence numbers for replay protection
+
+## 11. Phase 3 — Native iOS App (Detailed Architecture)
+
+### Objective
+Build a native iOS companion app that:
+1. Holds the AES decryption key in the Secure Enclave (non-extractable)
+2. Gates key access with FaceID/TouchID
+3. Receives push notifications via APNs
+4. Serves as the signing authority for Phase 4 interactive inputs
+
+### Architecture Overview
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Phase 3 Architecture                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  iOS App (Expo + Secure Enclave)                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐  │
+│  │ FaceID Gate │→ │ Key Storage  │→ │ APNs Receiver + Decrypt   │  │
+│  └──────────────┘  └──────────────┘  └───────────────────────────┘  │
+│         ↑                ↑                      ↑                    │
+│         └────────────────┴──────────────────────┘                    │
+│                            │                                          │
+│                            ↓                                          │
+│                    Deep-link to Glass PWA                            │
+├─────────────────────────────────────────────────────────────────────┤
+│  Cloudflare Worker (Unchanged)                                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐  │
+│  │ KV: out:*    │  │ KV: in:*     │  │ POST /intent (Phase 4)    │  │
+│  └──────────────┘  └──────────────┘  └───────────────────────────┘  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Daemon (Mac mini)                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐  │
+│  │ fs.watch    │  │ Intent Poller │→ │ Signature Verifier        │  │
+│  └──────────────┘  └──────────────┘  └───────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### New Components
+
+#### 11.1 iOS App Structure
+```
+mobile/
+├── App.tsx                    # Main app entry
+├── screens/
+│   ├── HomeScreen.tsx         # Dashboard + history
+│   ├── SettingsScreen.tsx     # Key management, notifications
+│   └── OnboardingScreen.tsx    # First-run key provisioning
+├── services/
+│   ├── keychain.ts           # Secure Enclave wrapper
+│   ├── apns.ts              # Push notification handling
+│   ├── crypto.ts            # AES-GCM (shared with daemon)
+│   └── deepLink.ts          # URL scheme handler
+└── components/
+    ├── BiometricButton.tsx  # FaceID gating UI
+    └── MessageCard.tsx      # Task display
+```
+
+#### 11.2 Secure Enclave Integration
+- Use `expo-secure-store` for Keychain access
+- Generate Ed25519 keypair on first launch (for Phase 4 signing)
+- Store AES key with `kSecAccessControlBiometryCurrentSet`
+- Private key never leaves Secure Enclave hardware
+
+#### 11.3 APNs Integration
+- Register for remote notifications on app launch
+- Handle `application(didReceiveRemoteNotification:)` 
+- Payload types:
+  - `{ type: "ping", title: "...", body: "📬 3 new tasks" }` — structural
+  - `{ type: "task", encrypted: "base64-blob" }` — encrypted task
+- Background refresh: app can request background execution
+
+#### 11.4 Key Provisioning Flow (QR)
+```
+Mac mini                          iOS App
+   ↓
+   Generate QR: { pubKey, deviceId }
+   ↓
+   [User scans QR code]
+   ↓
+   Verify deviceId not already registered
+   ↓
+   Store pubKey in CF Worker KV: device:{deviceId}
+   ↓
+   ← ACK + encryption key (encrypted with pubKey)
+```
+
+### Implementation Plan
+
+#### Phase 3 Step 1: Expo Skeleton (Week 1)
+- Initialize Expo project with EAS
+- Set up navigation (React Navigation)
+- Implement HomeScreen with placeholder data
+- Build SettingsScreen
+
+#### Phase 2 Step 2: Secure Enclave (Week 2)
+- Integrate `expo-secure-store`
+- Implement biometric gating
+- Generate/import encryption keys
+- Implement key export (for daemon config)
+
+#### Phase 3 Step 3: APNs (Week 2-3)
+- Set up APNs certificates (manual, per Apple Dev account)
+- Implement push handler
+- Test background notification receipt
+
+#### Phase 3 Step 4: Deep Link (Week 3)
+- Configure URL scheme: `greenkeeper://`
+- Link Glass PWA: `greenkeeper://open?taskId=xxx`
+- Implement universal links (optional)
+
+### Constraints
+1. **Apple Developer Account Required** — Lasse must provide access
+2. **No plaintext corporate data in push** — only structural pings or encrypted blobs
+3. **Continue integer-only intents for Phase 3** — signed free-text only Phase 4
+4. **EDR stealth** — app network traffic should look like normal APNs
+
+### Branch Name
+`feat/phase3-ios-app`
